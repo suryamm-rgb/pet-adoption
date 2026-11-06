@@ -1,0 +1,26 @@
+import { Router } from "express";
+import * as c from "../controllers/adminController.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
+import { validate } from "../middleware/validate.js";
+import { wrap } from "../utils/http.js";
+import { admin } from "../utils/schemas.js";
+
+const r = Router();
+r.use(requireAuth, requireRole("admin"));
+r.get("/stats", wrap(c.stats));
+r.get("/verifications", wrap(c.verifications));
+r.patch("/caretakers/:id/verify", validate(admin.verify), wrap(c.verify));
+r.get("/users", wrap(c.users));
+r.patch("/users/:id/block", validate(admin.block), wrap(c.block));
+r.get("/bookings", wrap(c.bookings));
+r.get("/disputes", wrap(c.disputes));
+r.patch("/disputes/:id/resolve", validate(admin.resolve), wrap(c.resolve));
+r.get("/payments", wrap(c.payments));
+r.get("/payouts/pending", wrap(c.pendingPayouts));
+r.post("/payouts/:bookingId", validate(admin.payout), wrap(c.payout));
+r.get("/settings", wrap(c.getSettingsHandler));
+r.put("/settings", validate(admin.settings), wrap(c.putSettings));
+r.get("/listings/pending", wrap(c.pendingListings));
+r.patch("/listings/:id/:action(approve|reject)", wrap(c.reviewListing));
+r.get("/audit", wrap(c.auditLog));
+export default r;

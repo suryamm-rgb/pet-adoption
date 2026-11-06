@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PawStay: pet care and adoption platform
 
-## Getting Started
+Built from [docs/pet-care-platform-plan.md](docs/pet-care-platform-plan.md).
 
-First, run the development server:
+| Doc | What is in it |
+|---|---|
+| [docs/backend.md](docs/backend.md) | server structure, collections, every API route, business rules, jobs, security |
+| [docs/frontend.md](docs/frontend.md) | client structure, design tokens, data and auth, screens by role |
+| [docs/flows.md](docs/flows.md) | sign-up, booking, payment, refunds, disputes, adoption, sale and shop, status table |
+| [docs/pet-care-platform-plan.md](docs/pet-care-platform-plan.md) | the original plan, with section 20 listing where the build differs |
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+client/   Next.js 16 (App Router) + Tailwind v4 design tokens
+server/   Express + MongoDB (Mongoose) REST API, Socket.io, cron jobs
+docs/     the project plan
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Run it
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You need Node 22+, pnpm and a local MongoDB.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# 1. API (http://localhost:5001)
+cd server
+cp .env.example .env        # then edit secrets
+pnpm install
+pnpm seed                   # demo users, caretakers and products
+pnpm dev
 
-## Learn More
+# 2. Web app (http://localhost:3000)
+cd client
+pnpm install
+echo "NEXT_PUBLIC_API_URL=http://localhost:5001/api" > .env.local
+pnpm dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Port 5000 is avoided on purpose: macOS uses it for AirPlay Receiver.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+On an empty database the first account you register becomes the admin. Or use the seed logins, password `Password123`:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Role | Email |
+|---|---|
+| Admin | admin@pawstay.test |
+| Owner and seller | ravi@pawstay.test |
+| Caretaker | anita@pawstay.test, imran@pawstay.test, meera@pawstay.test |
 
-## Deploy on Vercel
+## Payments
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+With no `RAZORPAY_KEY_ID` set (development only) the API runs in **mock mode**: checkout is simulated and signatures use a built-in test secret, so the whole booking flow works without an account. Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` to use real Razorpay. Mock mode is disabled when `NODE_ENV=production`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Payouts to caretakers are admin-triggered (manual bank transfer) in this version, as the plan recommends for v1.
+
+## Other settings
+
+- Uploads go to `server/uploads` unless the `CLOUDINARY_*` variables are set.
+- In development new accounts are auto-verified. Set `AUTO_VERIFY_EMAIL=false` to test the verification link flow (links are printed in the API console). There is no email provider wired in yet.
+- Platform fee, refund tiers, payment deadline and dispute window are editable in the admin Settings page.
+
+## Tests
+
+```bash
+cd server && pnpm test
+```
+
+17 tests cover pricing, refund tiers, the full booking flow, webhook idempotency, double-booking, disputes, adoption, sales and the shop. They use separate `pet-platform-test*` databases and drop them afterwards.
+
+## Design tokens
+
+All colours, radii, shadows and fonts live in `client/app/globals.css`. Components use semantic tokens (`bg-surface`, `text-muted`, `bg-primary`) so dark mode and re-branding need no component changes.

@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens
+ * 1. Raw scales (brand, accent)       -> @theme   (generates bg-brand-600, text-accent-500 ...)
+ * 2. Semantic tokens (surface, text)  -> :root + [data-theme=dark], exposed through @theme inline
+ * 3. Status tokens (booking states)   -> success / warning / danger / info
+ * Components use semantic tokens only, so dark mode and re-branding need no component changes.
+ */
+
+@theme {
+  /* Brand: vivid teal */
+  --color-brand-50: #e8fbf6;
+  --color-brand-100: #c5f4e8;
+  --color-brand-200: #8fe8d3;
+  --color-brand-300: #55d6bc;
+  --color-brand-400: #22bda3;
+  --color-brand-500: #0ea58f;
+  --color-brand-600: #0a8c79;
+  --color-brand-700: #0a7062;
+  --color-brand-800: #0b574d;
+  --color-brand-900: #0b4640;
+
+  /* Accent: sunny orange */
+  --color-accent-50: #fff6ec;
+  --color-accent-100: #ffe8cf;
+  --color-accent-200: #ffd0a1;
+  --color-accent-300: #ffb36b;
+  --color-accent-400: #ff9540;
+  --color-accent-500: #ff7a1a;
+  --color-accent-600: #f06400;
+  --color-accent-700: #c45000;
+
+  /* Sky and berry, used for colourful highlights */
+  --color-sky-100: #dcf0ff;
+  --color-sky-600: #1d8fe0;
+  --color-berry-100: #ffe1ee;
+  --color-berry-600: #e0457f;
+  --color-sun-100: #fff2bf;
+  --color-sun-600: #d99a00;
+
+  /* Status */
+  --color-success-50: #ecfdf3;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-warning-50: #fffbeb;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-danger-50: #fef2f2;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-info-50: #eff6ff;
+  --color-info-600: #2563eb;
+  --color-info-700: #1d4ed8;
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+
+  /* Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px rgb(120 80 20 / 0.06), 0 4px 14px -6px rgb(120 80 20 / 0.14);
+  --shadow-pop: 0 18px 40px -14px rgb(60 40 10 / 0.3);
+
+  /* Layout */
+  --container-page: 72rem;
+  --spacing-sidebar: 16rem;
+  --spacing-header: 4rem;
+}
+
+/* Semantic tokens: light (default) */
+:root {
+  --background: #fff9f1;
+  --surface: #ffffff;
+  --surface-muted: #fff0dd;
+  --border: #f0e2cf;
+  --border-strong: #dccab2;
+  --foreground: #1d2433;
+  --muted: #667085;
+  --primary: var(--color-brand-600);
+  --primary-hover: var(--color-brand-700);
+  --primary-soft: var(--color-brand-50);
+  --primary-foreground: #ffffff;
+  --ring: var(--color-brand-400);
+  --hero-a: #c9f4e8;
+  --hero-b: #ffe2bd;
+}
+
+/* Semantic tokens: dark (opt in with <html data-theme="dark">) */
+:root[data-theme="dark"] {
+  --background: #0f1110;
+  --surface: #181b1a;
+  --surface-muted: #202423;
+  --border: #2c3130;
+  --border-strong: #3d4341;
+  --foreground: #f2f2ef;
+  --muted: #a3a39d;
+  --primary: var(--color-brand-400);
+  --primary-hover: var(--color-brand-300);
+  --primary-soft: #16302d;
+  --primary-foreground: #06201c;
+  --ring: var(--color-brand-400);
+  --hero-a: #16302d;
+  --hero-b: #2a1a0e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+
+  select option {
+    background: var(--surface);
+    color: var(--foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@theme {
+  --animate-toast: toast-in 0.25s ease-out;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --shadow-glow: 0 14px 38px -12px rgb(14 165 143 / 0.55);
+  --background-image-hero: radial-gradient(60rem 30rem at 85% -10%, var(--hero-a), transparent 60%),
+    radial-gradient(40rem 24rem at -10% 20%, var(--hero-b), transparent 55%);
+  --background-image-brand-gradient: linear-gradient(135deg, var(--color-brand-400), var(--color-brand-600) 55%, var(--color-brand-800));
+  --background-image-sunny: linear-gradient(135deg, var(--color-accent-400), #ff5e3a);
+
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

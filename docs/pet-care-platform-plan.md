@@ -2,6 +2,8 @@
 
 A marketplace where pet owners leave their pets with verified caretakers while travelling, pay per day through the platform, and the platform keeps a fee. The same platform also supports permanent adoption, buying and selling pets, and a pet supplies shop.
 
+> **Implementation status:** Version 1 and Version 2 are built. See [backend.md](backend.md), [frontend.md](frontend.md) and [flows.md](flows.md) for how it works, and the [README](../README.md) to run it. The checklist in section 19 is implemented and covered by `server/tests` (17 tests). The sections below are the original plan; section 20 lists where the build differs from it.
+
 **Example:** Ravi has a dog and must travel for 6 days. He posts a care request. A verified caretaker accepts. Ravi pays online, and the platform holds the money. The caretaker sends daily photo updates. When the dog is returned safely, the platform deducts its fee and pays the caretaker.
 
 ---
@@ -280,13 +282,14 @@ Return / refund window, then seller payout (if multi-vendor) minus commission
 ## 6. Folder Structure
 
 ```
-pet-platform/
+pet-adoption/                    (repository root, holds docs/)
 |-- client/                      (Next.js)
 |   |-- app/
-|   |   |-- (public)/            home, caretakers, adopt, shop, login, register
-|   |   |-- owner/               pets, bookings, payments
-|   |   |-- caretaker/           profile, requests, active-stays, earnings
-|   |   |-- admin/               dashboard, verifications, listings, payments, settings
+|   |   |-- (public)/            home, caretakers, adopt, pets-for-sale, listings, shop, auth pages, legal
+|   |   |-- owner/               pets, bookings, payments, reviews, adoptions, orders
+|   |   |-- caretaker/           profile, requests, stays, calendar, earnings
+|   |   |-- seller/              listings, requests, products
+|   |   |-- admin/               dashboard, verifications, listings, bookings, payments, disputes, users, settings, orders
 |   |-- components/              UI pieces (PetCard, BookingForm, Chat, UpdateFeed)
 |   |-- lib/                     api client, auth helper, socket client
 |   '-- .env.local
@@ -302,7 +305,8 @@ pet-platform/
     |-- sockets/                 chat and notification handlers
     |-- utils/                   helpers (money, dates, email templates)
     |-- app.js
-    '-- server.js
+    |-- server.js
+    '-- seed.js, tests/
 ```
 
 Rule: controllers stay thin; all business rules (price, refund, status changes) live in `services/`.
@@ -472,7 +476,7 @@ Send in-app, email, and optionally SMS for: booking requested, accepted, rejecte
 ```
 # server/.env
 NODE_ENV=development
-PORT=5000
+PORT=5001
 MONGO_URI=
 JWT_SECRET=
 CLIENT_URL=http://localhost:3000
@@ -488,7 +492,7 @@ SMTP_PASS=
 SMS_API_KEY=
 
 # client/.env.local
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
+NEXT_PUBLIC_API_URL=http://localhost:5001/api
 NEXT_PUBLIC_RAZORPAY_KEY_ID=
 ```
 
@@ -561,3 +565,24 @@ Version 1 is about 11 weeks; the full product is about 16 to 17 weeks solo.
 - [ ] The admin can verify, resolve disputes, set the fee and see revenue
 - [ ] Webhooks are verified and idempotent
 - [ ] Deployed with test and live environments, and tested on mobile
+
+---
+
+## 20. Where the build differs from this plan
+
+| Plan | Built | Why |
+|---|---|---|
+| API on port 5000 | Port 5001 | macOS uses 5000 for AirPlay Receiver |
+| Cloudinary or S3 for files | Local `server/uploads`, Cloudinary used automatically when its variables are set | works with no account |
+| Razorpay only | Same, plus a development **mock mode** when no keys are set | lets the full payment flow run without an account. It is off in production |
+| Razorpay Route payouts | Admin-triggered manual payout (the plan's own v1 suggestion) | Route needs caretaker KYC and approval |
+| MongoDB transactions | Atomic `findOneAndUpdate` status changes, idempotent payment capture | no replica set needed. Add transactions later if desired |
+| Email and SMS notifications | In-app notifications (live via Socket.io). Email and SMS are not connected | needs a provider account. Links are logged to the API console |
+| `express-mongo-sanitize` | Own `middleware/sanitize.js` | the package does not fit Express request objects cleanly |
+| Cart endpoint `POST /cart` as stored cart | Cart kept in the browser. `POST /cart` only prices it | prices are never trusted from the client |
+| JWT short expiry plus refresh | 7-day httpOnly cookie, no refresh token | simpler. Add refresh tokens before launch if required |
+| Email verification required for owners | Verification required to book. Auto-verified in development | easier local testing |
+| Pages listed in section 9 | All built, plus seller area, notifications, legal pages | |
+| Admin audit log | Built (`auditlogs`, `GET /admin/audit`). No admin screen for it yet | |
+
+Not built: mobile app, live location, vet-visit booking, insurance, subscriptions, SMS and WhatsApp, multi-language (section 1.3 later ideas), and a UI for the admin audit log.

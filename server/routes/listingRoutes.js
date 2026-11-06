@@ -1,0 +1,22 @@
+import { Router } from "express";
+import * as c from "../controllers/listingController.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
+import { upload } from "../middleware/upload.js";
+import { validate } from "../middleware/validate.js";
+import { wrap } from "../utils/http.js";
+import { listing, social } from "../utils/schemas.js";
+
+const r = Router();
+r.get("/", validate(listing.query, "query"), wrap(c.list));
+r.get("/mine", requireAuth, wrap(c.mine));
+r.get("/requests/incoming", requireAuth, wrap(c.requestsForMyListings));
+r.get("/requests/mine", requireAuth, wrap(c.myRequests));
+r.patch("/requests/:id/status", requireAuth, validate(listing.status), wrap(c.updateRequest));
+r.post("/", requireAuth, requireRole("seller", "owner"), validate(listing.create), wrap(c.create));
+r.get("/:id", wrap(c.get));
+r.post("/:id/photos", requireAuth, upload("files"), wrap(c.photos));
+r.post("/:id/requests", requireAuth, validate(listing.request), wrap(c.request));
+r.post("/:id/handover", requireAuth, wrap(c.handover));
+r.get("/:id/messages", requireAuth, wrap(c.listMessages));
+r.post("/:id/messages", requireAuth, validate(social.message), wrap(c.postMessage));
+export default r;

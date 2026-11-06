@@ -1,0 +1,20 @@
+import { Router } from "express";
+import * as c from "../controllers/shopController.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
+import { upload } from "../middleware/upload.js";
+import { validate } from "../middleware/validate.js";
+import { wrap } from "../utils/http.js";
+import { shop } from "../utils/schemas.js";
+
+const r = Router();
+r.get("/products", wrap(c.products));
+r.get("/products/:id", wrap(c.product));
+r.post("/products", requireAuth, requireRole("seller", "admin"), validate(shop.product), wrap(c.createProduct));
+r.put("/products/:id", requireAuth, requireRole("seller", "admin"), validate(shop.product.partial()), wrap(c.updateProduct));
+r.post("/products/:id/images", requireAuth, requireRole("seller"), upload("files"), wrap(c.productImages));
+r.post("/cart", validate(shop.cart), wrap(c.cart));
+r.post("/orders", requireAuth, validate(shop.order), wrap(c.createOrder));
+r.get("/orders/mine", requireAuth, wrap(c.myOrders));
+r.get("/orders", requireAuth, requireRole("admin"), wrap(c.allOrders));
+r.patch("/orders/:id/status", requireAuth, requireRole("admin", "seller"), validate(shop.orderStatus), wrap(c.updateStatus));
+export default r;
