@@ -26,6 +26,8 @@ export async function createReview(user, bookingId, { rating, comment }) {
   const isOwner = booking.ownerId.equals(user._id);
   if (!isOwner && !booking.caretakerId.equals(user._id)) throw badRequest("Only the parties can review");
   const toUserId = isOwner ? booking.caretakerId : booking.ownerId;
+  // Checked up front as well as by the unique index, which a brand-new database may not have built yet.
+  if (await Review.exists({ bookingId, fromUserId: user._id })) throw conflict("You already reviewed this booking");
   try {
     const review = await Review.create({ bookingId, fromUserId: user._id, toUserId, rating, comment });
     if (isOwner) await refreshRating(toUserId);
