@@ -2,6 +2,7 @@
   "name": "pet-platform-server",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.34.2",
   "type": "module",
   "scripts": {
     "dev": "node --watch server.js",
