@@ -1,4 +1,4 @@
-import { Booking, CaretakerProfile, DailyUpdate, Message, Review, User } from "../models/index.js";
+import { Booking, CaretakerProfile, CheckIn, DailyUpdate, Message, Pet, Review, User } from "../models/index.js";
 import * as svc from "../services/bookingService.js";
 import { streamInvoice } from "../services/invoiceService.js";
 import { createReview } from "../services/reviewService.js";
@@ -99,4 +99,25 @@ export async function myReviews(req, res) {
     Review.find({ fromUserId: req.user._id }).sort({ createdAt: -1 }).populate("toUserId", "name"),
   ]);
   res.json({ received, given });
+}
+
+const KIND_LABEL = { walk: "is out on a walk", vet: "is at the vet", home: "is back home", other: "shared a location" };
+
+/** Caretaker taps "Share location". Only while the pet is in care, only on purpose, never continuous. */
+export async function createCheckin(req, res) {
+  const booking = await svc.getBookingFor(req.user, req.params.id);
+  if (!booking.caretakerId.equals(req.user._id)) throw forbidden("Only the caretaker can share a location");
+  if (booking.status !== "IN_CARE") throw conflict("Location can be shared while the pet is in care");
+  const recent = await CheckIn.countDocuments({ bookingId: booking._id, createdAt: { $gt: new Date(Date.now() - 60_000) } });
+  if (recent >= 3) throw conflict("Please wait a minute before sharing again");
+  const checkin = await CheckIn.create({ ...req.body, bookingId: booking._id, caretakerId: req.user._id });
+  const pet = await Pet.findById(booking.petId).select("name");
+  await notify(booking.ownerId, { type: "checkin", title: `${pet?.name ?? "Your pet"} ${KIND_LABEL[checkin.kind]}`, body: req.body.note || "Tap to see the location", link: `/owner/bookings/${booking._id}` });
+  getIo()?.to(`booking:${booking._id}`).emit("checkin:new", checkin);
+  res.status(201).json(checkin);
+}
+
+export async function listCheckins(req, res) {
+  const booking = await svc.getBookingFor(req.user, req.params.id);
+  res.json(await CheckIn.find({ bookingId: booking._id }).sort({ createdAt: -1 }).limit(50));
 }

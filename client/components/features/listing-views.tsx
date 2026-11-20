@@ -14,11 +14,12 @@ import { petPhoto } from "@/lib/images";
 import { useToast } from "@/components/toast";
 import { api, fileUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { formatPaise } from "@/lib/format";
+import { formatPaise, petTypeLabel } from "@/lib/format";
 import { useAction, useGet } from "@/lib/hooks";
 import { payWithRazorpay } from "@/lib/razorpay";
 import type { Listing } from "@/lib/types";
 import { Chat } from "./chat";
+import { ReportButton } from "./report-button";
 
 export function ListingCard({ l }: { l: Listing }) {
   return (
@@ -30,7 +31,7 @@ export function ListingCard({ l }: { l: Listing }) {
             <h3 className="font-semibold">{l.title}</h3>
             {l.status === "reserved" && <Badge tone="warning">Reserved</Badge>}
           </div>
-          <p className="text-sm text-muted">{[l.petType, l.city].filter(Boolean).join(" · ")}</p>
+          <p className="text-sm text-muted">{[petTypeLabel(l.petType, l.otherPetType), l.city].filter(Boolean).join(" · ")}</p>
           <p className="mt-2 text-lg font-semibold">{l.mode === "adopt" ? <span className="text-primary">Adopt</span> : formatPaise(l.price)}</p>
         </CardBody>
       </Card>
@@ -47,7 +48,7 @@ export function ListingGrid({ mode }: { mode: "adopt" | "sell" }) {
     <>
       <div className="mb-6 grid gap-3 sm:grid-cols-[1fr_12rem_auto]">
         <Input aria-label="City" placeholder="Filter by city" value={city} onChange={(e) => setCity(e.target.value)} />
-        <Select aria-label="Pet type" value={petType} onChange={(e) => setPetType(e.target.value)}><option value="">All pets</option><option>Dog</option><option>Cat</option><option>Rabbit</option><option>Bird</option></Select>
+        <Select aria-label="Pet type" value={petType} onChange={(e) => setPetType(e.target.value)}><option value="">All pets</option><option>Dog</option><option>Cat</option><option>Rabbit</option><option>Bird</option><option>Other</option></Select>
         <ButtonLink href="/seller/listings/new" variant="secondary">List a pet</ButtonLink>
       </div>
       <Query q={q} skeleton={<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-64" />)}</div>}>
@@ -87,8 +88,9 @@ export function ListingDetail() {
               <img src={fileUrl(l.photos[0])} alt={l.title} className="aspect-[4/3] w-full rounded-2xl object-cover" />
             ) : <div className="flex aspect-[4/3] items-center justify-center rounded-2xl bg-accent-50 text-8xl" aria-hidden>🐾</div>}
             <h1 className="mt-5 text-2xl font-bold tracking-tight sm:text-3xl">{l.title}</h1>
-            <p className="text-muted">{[l.petType, l.city].filter(Boolean).join(" · ")}</p>
+            <p className="text-muted">{[petTypeLabel(l.petType, l.otherPetType), l.city].filter(Boolean).join(" · ")}</p>
             <p className="mt-4 whitespace-pre-line">{l.description}</p>
+            <div className="mt-3"><ReportButton targetType="listing" targetId={l._id} label="Report this listing" /></div>
           </div>
           <div className="space-y-4">
             <Card>
@@ -117,6 +119,7 @@ export function ListingDetail() {
 export function NewListingForm() {
   const router = useRouter();
   const [mode, setMode] = useState<"adopt" | "sell">("adopt");
+  const [isOther, setIsOther] = useState(false);
   const [files, setFiles] = useState<FileList | null>(null);
   const create = useAction(async (data: Record<string, unknown>) => {
     const l = await api<Listing>("/listings", { method: "POST", body: data });
@@ -131,12 +134,13 @@ export function NewListingForm() {
         <form className="space-y-4" onSubmit={(e) => {
           e.preventDefault();
           const d = new FormData(e.currentTarget);
-          create.mutate({ title: d.get("title"), mode, petType: d.get("petType"), city: d.get("city"), description: d.get("description"), price: mode === "sell" ? Math.round(Number(d.get("price")) * 100) : 0 });
+          create.mutate({ title: d.get("title"), mode, petType: d.get("petType"), otherPetType: d.get("petType") === "Other" ? d.get("otherPetType") : undefined, city: d.get("city"), description: d.get("description"), price: mode === "sell" ? Math.round(Number(d.get("price")) * 100) : 0 });
         }}>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Listing type" htmlFor="mode"><Select id="mode" value={mode} onChange={(e) => setMode(e.target.value as "adopt" | "sell")}><option value="adopt">Adoption (free)</option><option value="sell">Sale</option></Select></Field>
-            <Field label="Pet type" htmlFor="petType"><Select id="petType" name="petType"><option>Dog</option><option>Cat</option><option>Rabbit</option><option>Bird</option></Select></Field>
+            <Field label="Pet type" htmlFor="petType"><Select id="petType" name="petType" onChange={(e) => setIsOther(e.target.value === "Other")}><option>Dog</option><option>Cat</option><option>Rabbit</option><option>Bird</option><option>Other</option></Select></Field>
           </div>
+          {isOther && <Field label="Specify pet type" htmlFor="otherPetType"><Input id="otherPetType" name="otherPetType" required maxLength={40} placeholder="Hamster, turtle, guinea pig…" /></Field>}
           <Field label="Title" htmlFor="title"><Input id="title" name="title" required minLength={3} placeholder="Friendly 2-year-old Beagle" /></Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="City" htmlFor="city"><Input id="city" name="city" required /></Field>

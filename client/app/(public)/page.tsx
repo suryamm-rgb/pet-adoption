@@ -65,7 +65,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-page px-4 py-14">
+      <section className="border-b border-border bg-surface">
+        <div className="mx-auto max-w-page px-4 py-14">
         <div className="mb-8 max-w-xl">
           <h2 className="text-3xl font-semibold sm:text-4xl">Everything your pet needs</h2>
           <p className="mt-2 text-muted">From a weekend away to a forever home.</p>
@@ -84,11 +85,12 @@ export default function HomePage() {
             </li>
           ))}
         </ul>
+      </div>
       </section>
 
-      <section className="bg-surface-muted">
+      <section className="border-b border-border bg-surface-muted">
         <div className="mx-auto max-w-page px-4 py-14">
-          <p className="text-sm font-semibold uppercase tracking-wide text-accent-600">Simple and safe</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">Simple and safe</p>
           <h2 className="text-3xl font-semibold sm:text-4xl">How PawStay works</h2>
           <ol className="mt-8 grid gap-6 md:grid-cols-3">
             {steps.map((s) => (
@@ -103,16 +105,19 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-page px-4 py-14">
+      <section className="border-b border-border bg-surface">
+        <div className="mx-auto max-w-page px-4 py-14">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div><h2 className="text-3xl font-semibold sm:text-4xl">Top-rated caretakers</h2><p className="mt-2 text-muted">Verified, reviewed and loved by pet owners.</p></div>
           <Link href="/caretakers" className="hidden text-sm font-semibold text-primary hover:underline sm:block">View all →</Link>
         </div>
         <FeaturedCaretakers />
         <Link href="/caretakers" className="mt-6 block text-center text-sm font-semibold text-primary hover:underline sm:hidden">View all caretakers →</Link>
+      </div>
       </section>
 
-      <section className="mx-auto max-w-page px-4 pb-14">
+      <section className="border-b border-border bg-surface-muted">
+        <div className="mx-auto max-w-page px-4 py-14">
         <div className="grid items-center gap-10 lg:grid-cols-2">
           <Photo src={photo("runner", 900, 700)} alt="A happy dog running on grass" className="aspect-[4/3] w-full rounded-3xl" />
           <div>
@@ -128,14 +133,18 @@ export default function HomePage() {
             </ul>
           </div>
         </div>
+      </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-4 pb-14">
+      <section className="border-b border-border bg-surface">
+        <div className="mx-auto max-w-3xl px-4 py-14">
         <h2 className="mb-6 text-center text-3xl font-semibold sm:text-4xl">Questions, answered</h2>
         <Faq />
+      </div>
       </section>
 
-      <section className="mx-auto max-w-page px-4 pb-16">
+      <section className="bg-brand-50">
+        <div className="mx-auto max-w-page px-4 py-14">
         <div className="relative overflow-hidden rounded-3xl bg-brand-gradient text-white shadow-glow">
           <Photo src={photo("golden", 900, 700)} alt="" className="absolute inset-y-0 right-0 hidden h-full w-2/5 opacity-90 [mask-image:linear-gradient(to_left,black_55%,transparent)] md:block" />
           <div className="relative max-w-xl px-6 py-12 sm:px-12">
@@ -144,6 +153,7 @@ export default function HomePage() {
             <ButtonLink href="/register" variant="accent" size="lg" className="mt-6">Become a caretaker</ButtonLink>
           </div>
         </div>
+      </div>
       </section>
     </>
   );

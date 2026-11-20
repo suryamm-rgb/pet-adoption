@@ -9,7 +9,9 @@ const nav = [
   { href: "/admin/payments", label: "Payments & payouts", icon: "💳" },
   { href: "/admin/orders", label: "Shop orders", icon: "📦" },
   { href: "/admin/disputes", label: "Disputes", icon: "⚖️" },
+  { href: "/admin/reports", label: "Reports", icon: "🛡️" },
   { href: "/admin/users", label: "Users", icon: "👥" },
+  { href: "/admin/audit", label: "Audit log", icon: "📜" },
   { href: "/admin/settings", label: "Settings", icon: "⚙️" },
 ];
 

@@ -17,7 +17,19 @@ const userSchema = new Schema(
     resetToken: { type: String, select: false },
     resetExpires: { type: Date, select: false },
     phoneVerified: { type: Boolean, default: false },
+    phoneOtpHash: { type: String, select: false },
+    phoneOtpExpires: { type: Date, select: false },
+    phoneOtpAttempts: { type: Number, default: 0, select: false },
+    phoneOtpSentAt: { type: Date, select: false },
+    googleId: { type: String, index: true, sparse: true },
+    notifyPrefs: {
+      email: { type: Boolean, default: true },
+      push: { type: Boolean, default: true },
+      whatsapp: { type: Boolean, default: false }, // opt-in, and only for a verified phone
+    },
     isBlocked: { type: Boolean, default: false },
+    tokenVersion: { type: Number, default: 0 }, // bump to sign the user out of every device
+    deletedAt: Date,
   },
   opts,
 );

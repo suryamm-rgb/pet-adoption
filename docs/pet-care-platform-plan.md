@@ -2,7 +2,7 @@
 
 A marketplace where pet owners leave their pets with verified caretakers while travelling, pay per day through the platform, and the platform keeps a fee. The same platform also supports permanent adoption, buying and selling pets, and a pet supplies shop.
 
-> **Implementation status:** Version 1 and Version 2 are built. See [backend.md](backend.md), [frontend.md](frontend.md) and [flows.md](flows.md) for how it works, and the [README](../README.md) to run it. The checklist in section 19 is implemented and covered by `server/tests` (17 tests). The sections below are the original plan; section 20 lists where the build differs from it.
+> **Implementation status:** Version 1 and Version 2 are built. See [backend/](backend/README.md), [frontend/](frontend/README.md) and [flows/](flows/README.md) for how it works, and the [README](../README.md) to run it. The checklist in section 19 is implemented and covered by `server/tests` (17 tests). The sections below are the original plan; section 20 lists where the build differs from it.
 
 **Example:** Ravi has a dog and must travel for 6 days. He posts a care request. A verified caretaker accepts. Ravi pays online, and the platform holds the money. The caretaker sends daily photo updates. When the dog is returned safely, the platform deducts its fee and pays the caretaker.
 
@@ -573,16 +573,20 @@ Version 1 is about 11 weeks; the full product is about 16 to 17 weeks solo.
 | Plan | Built | Why |
 |---|---|---|
 | API on port 5000 | Port 5001 | macOS uses 5000 for AirPlay Receiver |
-| Cloudinary or S3 for files | Local `server/uploads`, Cloudinary used automatically when its variables are set | works with no account |
+| Cloudinary or S3 for files | Local `server/uploads` (public photos) and `server/private-uploads` (ID, address, vaccination documents behind an access check). Cloudinary used automatically when its variables are set, with authenticated assets for private files | works with no account |
 | Razorpay only | Same, plus a development **mock mode** when no keys are set | lets the full payment flow run without an account. It is off in production |
 | Razorpay Route payouts | Admin-triggered manual payout (the plan's own v1 suggestion) | Route needs caretaker KYC and approval |
 | MongoDB transactions | Atomic `findOneAndUpdate` status changes, idempotent payment capture | no replica set needed. Add transactions later if desired |
-| Email and SMS notifications | In-app notifications (live via Socket.io). Email and SMS are not connected | needs a provider account. Links are logged to the API console |
+| Email and SMS notifications | In-app notifications (live via Socket.io) plus email through Nodemailer for account events and 19 important notification types. SMS is not connected | SMS needs a provider account. Without `SMTP_HOST` emails are logged in development |
 | `express-mongo-sanitize` | Own `middleware/sanitize.js` | the package does not fit Express request objects cleanly |
 | Cart endpoint `POST /cart` as stored cart | Cart kept in the browser. `POST /cart` only prices it | prices are never trusted from the client |
 | JWT short expiry plus refresh | 7-day httpOnly cookie, no refresh token | simpler. Add refresh tokens before launch if required |
 | Email verification required for owners | Verification required to book. Auto-verified in development | easier local testing |
 | Pages listed in section 9 | All built, plus seller area, notifications, legal pages | |
-| Admin audit log | Built (`auditlogs`, `GET /admin/audit`). No admin screen for it yet | |
+| Admin audit log | Built, with an admin screen at `/admin/audit` | |
 
-Not built: mobile app, live location, vet-visit booking, insurance, subscriptions, SMS and WhatsApp, multi-language (section 1.3 later ideas), and a UI for the admin audit log.
+Added after the first build (all tested): profile and password settings, sign out everywhere, account deletion (anonymises); private ID and vaccination files served only to the owner, an assigned caretaker or an admin (`/api/files/private`); report button plus admin moderation queue; review replies; shop order cancellation with automatic refund and restock, seller order screen, seller isolation; caretaker bank details, blockable availability dates, search sort; paginated admin lists; audit log screen; Nodemailer emails; Dockerfiles, compose, CI, sitemap, robots, manifest, health check, graceful shutdown. See `DEPLOY.md`.
+
+Added later: walk and location check-ins, phone verification by SMS code, WhatsApp alerts and per-user notification preferences, browser push notifications, Google sign-in, and automatic Razorpay Route payouts (these four need provider keys and are written to the providers' documentation; see `DEPLOY.md`).
+
+Still not built: mobile app, continuous live location, vet-visit booking, insurance, subscriptions, multi-language, near-me map search UI.

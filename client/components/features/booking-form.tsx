@@ -8,7 +8,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Field, FormError, Input, Select } from "@/components/ui/form";
 import { api, errorText } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { calcPricing, countDays, formatPaise } from "@/lib/format";
+import { calcPricing, countDays, formatPaise, petTypeLabel } from "@/lib/format";
 import { useGet } from "@/lib/hooks";
 import type { Booking, Caretaker, Pet } from "@/lib/types";
 
@@ -62,7 +62,7 @@ export function BookingForm({ caretaker }: { caretaker: Caretaker }) {
             <Field label="Pet" htmlFor="pet">
               {pets.isPending ? <p className="text-sm text-muted">Loading pets…</p> : list.length ? (
                 <Select id="pet" value={chosen?._id ?? ""} onChange={(e) => setPetId(e.target.value)}>
-                  {list.map((p) => <option key={p._id} value={p._id}>{p.name} ({p.type})</option>)}
+                  {list.map((p) => <option key={p._id} value={p._id}>{p.name} ({petTypeLabel(p.type, p.otherType)})</option>)}
                 </Select>
               ) : (
                 <p className="text-sm text-muted">No matching pets. <Link href="/owner/pets/new" className="font-medium text-primary underline">Add a pet</Link> ({caretaker.acceptedPetTypes.join(", ") || "any type"}).</p>

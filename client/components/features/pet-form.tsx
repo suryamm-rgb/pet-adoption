@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import type { Pet } from "@/lib/types";
 const schema = z.object({
   name: z.string().trim().min(1, "Enter a name"),
   type: z.string().min(1),
+  otherType: z.string().optional(),
   breed: z.string().optional(),
   age: z.string().optional(),
   gender: z.string().optional(),
@@ -42,7 +43,7 @@ const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Ob
 
 function toPayload(v: z.output<typeof schema>) {
   return clean({
-    name: v.name, type: v.type, breed: v.breed, age: v.age, gender: v.gender, weight: v.weight === "" ? undefined : v.weight,
+    name: v.name, type: v.type, otherType: v.type === "Other" ? v.otherType?.trim() : "", breed: v.breed, age: v.age, gender: v.gender, weight: v.weight === "" ? undefined : v.weight,
     allergies: v.allergies, medications: v.medications, vetName: v.vetName, vetPhone: v.vetPhone,
     food: { type: v.foodType, schedule: v.foodSchedule }, routine: v.routine, sleepingPlace: v.sleepingPlace,
     goodWithKids: v.goodWithKids, goodWithPets: v.goodWithPets, behaviourNotes: v.behaviourNotes,
@@ -52,7 +53,7 @@ function toPayload(v: z.output<typeof schema>) {
 
 function defaults(p?: Pet): Values {
   return {
-    name: p?.name ?? "", type: p?.type ?? "Dog", breed: p?.breed ?? "", age: p?.age ?? "", gender: p?.gender ?? "", weight: p?.weight ?? "",
+    name: p?.name ?? "", type: p?.type ?? "Dog", otherType: p?.otherType ?? "", breed: p?.breed ?? "", age: p?.age ?? "", gender: p?.gender ?? "", weight: p?.weight ?? "",
     allergies: p?.allergies ?? "", medications: p?.medications ?? [], vetName: p?.vetName ?? "", vetPhone: p?.vetPhone ?? "",
     foodType: p?.food?.type ?? "", foodSchedule: p?.food?.schedule ?? "", routine: p?.routine ?? "", sleepingPlace: p?.sleepingPlace ?? "",
     goodWithKids: p?.goodWithKids ?? false, goodWithPets: p?.goodWithPets ?? false, behaviourNotes: p?.behaviourNotes ?? "",
@@ -70,12 +71,14 @@ export function PetForm({ pet }: { pet?: Pet }) {
   const qc = useQueryClient();
   const [error, setError] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const { register, control, handleSubmit, formState: { errors, isSubmitting } } = useForm<Values, unknown, z.output<typeof schema>>({ resolver: zodResolver(schema), defaultValues: defaults(pet) });
+  const { register, control, handleSubmit, setError: setFieldError, formState: { errors, isSubmitting } } = useForm<Values, unknown, z.output<typeof schema>>({ resolver: zodResolver(schema), defaultValues: defaults(pet) });
+  const type = useWatch({ control, name: "type" });
   const meds = useFieldArray({ control, name: "medications" });
 
   return (
     <form className="max-w-3xl space-y-5" noValidate onSubmit={handleSubmit(async (v) => {
       setError("");
+      if (v.type === "Other" && !v.otherType?.trim()) { setFieldError("otherType", { message: "Tell us what kind of pet this is" }); return; }
       try {
         const saved = pet ? await api<Pet>(`/pets/${pet._id}`, { method: "PUT", body: toPayload(v) }) : await api<Pet>("/pets", { method: "POST", body: toPayload(v) });
         if (file) { const form = new FormData(); form.append("files", file); await api(`/pets/${saved._id}/vaccination`, { method: "POST", form }); }
@@ -88,7 +91,8 @@ export function PetForm({ pet }: { pet?: Pet }) {
       <Group title="Basics">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Name" htmlFor="name" error={errors.name?.message}><Input id="name" aria-invalid={!!errors.name} {...register("name")} /></Field>
-          <Field label="Type" htmlFor="type"><Select id="type" {...register("type")}><option>Dog</option><option>Cat</option><option>Rabbit</option><option>Bird</option></Select></Field>
+          <Field label="Type" htmlFor="type"><Select id="type" {...register("type")}><option>Dog</option><option>Cat</option><option>Rabbit</option><option>Bird</option><option>Other</option></Select></Field>
+          {type === "Other" && <Field label="Specify pet type" htmlFor="otherType" error={errors.otherType?.message}><Input id="otherType" placeholder="Hamster, turtle, guinea pig…" aria-invalid={!!errors.otherType} {...register("otherType")} /></Field>}
           <Field label="Breed" htmlFor="breed"><Input id="breed" {...register("breed")} /></Field>
           <Field label="Age" htmlFor="age"><Input id="age" placeholder="3 years" {...register("age")} /></Field>
           <Field label="Gender" htmlFor="gender"><Select id="gender" {...register("gender")}><option value="">Not set</option><option>Male</option><option>Female</option></Select></Field>

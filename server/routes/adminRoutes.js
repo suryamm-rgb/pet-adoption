@@ -3,7 +3,8 @@ import * as c from "../controllers/adminController.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
 import { wrap } from "../utils/http.js";
-import { admin } from "../utils/schemas.js";
+import * as mod from "../controllers/moderationController.js";
+import { admin, moderation } from "../utils/schemas.js";
 
 const r = Router();
 r.use(requireAuth, requireRole("admin"));
@@ -23,4 +24,6 @@ r.put("/settings", validate(admin.settings), wrap(c.putSettings));
 r.get("/listings/pending", wrap(c.pendingListings));
 r.patch("/listings/:id/:action(approve|reject)", wrap(c.reviewListing));
 r.get("/audit", wrap(c.auditLog));
+r.get("/reports", wrap(mod.listReports));
+r.patch("/reports/:id", validate(moderation.resolve), wrap(mod.resolveReport));
 export default r;

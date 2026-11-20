@@ -23,7 +23,7 @@ function loadScript(): Promise<void> {
  * Opens Razorpay Checkout. With no keys configured the API runs in mock mode (keyId "rzp_mock"),
  * where checkout is simulated by the server. Resolves true when payment was captured.
  */
-export async function payWithRazorpay(checkout: Checkout, prefill: { name: string; email: string }): Promise<boolean> {
+export async function payWithRazorpay(checkout: Checkout, prefill: { name: string; email: string }, description = "Secure payment"): Promise<boolean> {
   if (checkout.keyId === "rzp_mock") {
     if (!window.confirm(`Test mode: pay ₹${checkout.amount / 100} with a simulated payment?`)) return false;
     await api("/payments/mock-complete", { method: "POST", body: { razorpayOrderId: checkout.razorpayOrderId } });
@@ -37,8 +37,9 @@ export async function payWithRazorpay(checkout: Checkout, prefill: { name: strin
       amount: checkout.amount,
       currency: checkout.currency,
       name: "PawStay",
+      description,
       prefill,
-      theme: { color: "#237f76" },
+      theme: { color: "#c2570c" },
       handler: async (r: Record<string, string>) => {
         try {
           await api("/payments/verify", { method: "POST", body: r });
@@ -49,7 +50,7 @@ export async function payWithRazorpay(checkout: Checkout, prefill: { name: strin
       },
       modal: { ondismiss: () => resolve(false) },
     });
-    rzp.on("payment.failed", () => resolve(false));
+    rzp.on("payment.failed", () => resolve(false)); // the customer can retry inside the same popup; webhook records the failure
     rzp.open();
   });
 }

@@ -43,6 +43,7 @@ export function UserMenu() {
           {areas.filter((a) => user.roles.includes(a.role)).map((a) => (
             <Link key={a.href} href={a.href} onClick={() => setOpen(false)} className="block rounded-md px-3 py-2 text-sm hover:bg-surface-muted">{a.label}</Link>
           ))}
+          <Link href="/account" onClick={() => setOpen(false)} className="block rounded-md px-3 py-2 text-sm hover:bg-surface-muted">Account settings</Link>
           <button type="button" onClick={async () => { await logout(); setOpen(false); router.push("/"); }} className="mt-1 block w-full rounded-md px-3 py-2 text-left text-sm text-danger-600 hover:bg-danger-50">Log out</button>
         </div>
       )}

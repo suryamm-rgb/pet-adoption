@@ -1,5 +1,7 @@
 import cron from "node-cron";
-import { Booking, DailyUpdate, getSettings } from "../models/index.js";
+import { env } from "../config/env.js";
+import { Booking, CaretakerProfile, DailyUpdate, getSettings } from "../models/index.js";
+import { payoutBooking } from "../services/paymentService.js";
 import { notify } from "../services/notify.js";
 
 const hours = (h) => new Date(Date.now() - h * 3_600_000);
@@ -63,7 +65,21 @@ export async function tripReminders() {
   return soon.length;
 }
 
-/** Payouts are admin-triggered in v1; this job just tells admins when some become eligible. */
+/** PAYOUT_MODE=route: pays every eligible completed stay automatically once the dispute window has passed. */
+export async function autoPayouts() {
+  if (env.payoutMode !== "route") return 0;
+  const s = await getSettings();
+  const due = await Booking.find({ status: "COMPLETED", payoutStatus: "pending", completedAt: { $lt: hours(s.disputeWindowHours) } }).limit(50);
+  let paid = 0;
+  for (const b of due) {
+    const profile = await CaretakerProfile.findOne({ userId: b.caretakerId }).select("payoutAccountStatus");
+    if (profile?.payoutAccountStatus !== "activated") continue; // waits for the caretaker to finish setup
+    try { await payoutBooking(null, b._id); paid += 1; } catch (err) { console.error(`[job] autoPayouts ${b._id}: ${err.message}`); }
+  }
+  return paid;
+}
+
+/** In manual mode payouts are admin-triggered; this job just counts the ones that became eligible. */
 export async function payoutDigest() {
   const s = await getSettings();
   return Booking.countDocuments({ status: "COMPLETED", payoutStatus: "pending", completedAt: { $lt: hours(s.disputeWindowHours) } });
@@ -85,5 +101,6 @@ export function startJobs() {
   cron.schedule("0 18 * * *", safe("updateReminder", updateReminder));
   cron.schedule("0 * * * *", safe("autoComplete", autoComplete));
   cron.schedule("0 * * * *", safe("payoutDigest", payoutDigest));
+  cron.schedule("10 * * * *", safe("autoPayouts", autoPayouts));
   cron.schedule("0 9 * * *", safe("tripReminders", tripReminders));
 }

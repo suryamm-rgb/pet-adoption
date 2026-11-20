@@ -1,0 +1,66 @@
+# Whole stack on one machine: docker compose up -d --build
+# Put real values in a .env file next to this one (see DEPLOY.md). Never commit it.
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      mongo: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      MONGO_URI: mongodb://mongo:27017/pet-platform
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (openssl rand -hex 32)}
+      CLIENT_URL: ${CLIENT_URL:?set CLIENT_URL, for example https://pawstay.example.com}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:?}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:?}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:?}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_SMS_FROM: ${TWILIO_SMS_FROM:-}
+      TWILIO_WHATSAPP_FROM: ${TWILIO_WHATSAPP_FROM:-}
+      REQUIRE_PHONE_VERIFICATION: ${REQUIRE_PHONE_VERIFICATION:-false}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:support@pawstay.local}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      PAYOUT_MODE: ${PAYOUT_MODE:-manual}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    volumes:
+      - uploads:/app/uploads
+      - private-uploads:/app/private-uploads
+    ports: ["5001:5001"]
+
+  web:
+    build:
+      context: ./client
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL, for example https://api.pawstay.example.com/api}
+        NEXT_PUBLIC_SITE_URL: ${CLIENT_URL}
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["3000:3000"]
+
+volumes:
+  mongo-data:
+  uploads:
+  private-uploads:

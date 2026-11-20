@@ -9,7 +9,7 @@ function cookieValue(header = "", name) {
 }
 
 export function initSockets(httpServer) {
-  const io = new Server(httpServer, { cors: { origin: env.clientUrl, credentials: true } });
+  const io = new Server(httpServer, { cors: { origin: env.clientUrls, credentials: true } });
   attachIo(io);
 
   io.use((socket, next) => {

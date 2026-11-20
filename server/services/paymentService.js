@@ -1,13 +1,14 @@
-import { Booking, Listing, Order, Payment, Product, getSettings } from "../models/index.js";
+import { env } from "../config/env.js";
+import { Booking, CaretakerProfile, Listing, Order, Payment, Product, getSettings } from "../models/index.js";
 import { badRequest, conflict, forbidden, notFound } from "../utils/http.js";
 import { refundBookingPayment } from "./bookingService.js";
 import { notify } from "./notify.js";
-import { createOrder, publicKeyId, verifyPaymentSignature } from "./razorpayService.js";
+import { createLinkedAccount, createOrder, createTransfer, publicKeyId, verifyPaymentSignature } from "./razorpayService.js";
 
 async function openPayment({ amount, receipt, type, ref }) {
   const existing = await Payment.findOne({ ...ref, status: "created" });
   if (existing) return existing;
-  const order = await createOrder({ amount, receipt });
+  const order = await createOrder({ amount, receipt, notes: { type, ref: String(receipt) } });
   return Payment.create({ ...ref, type, amount, razorpayOrderId: order.id });
 }
 
@@ -62,6 +63,7 @@ export async function markCaptured(payment, razorpayPaymentId, razorpaySignature
     const order = await Order.findById(claimed.orderId);
     if (order && order.status === "PENDING_PAYMENT") {
       order.status = "PLACED";
+      order.statusHistory.push({ status: "PLACED" });
       await order.save();
       await Promise.all(order.items.map((i) => Product.updateOne({ _id: i.productId }, { $inc: { stock: -i.qty } })));
       await notify(order.userId, { type: "order_placed", title: "Order placed", body: `Order total paid`, link: "/shop/orders" });
@@ -114,26 +116,77 @@ export async function handleWebhook(event) {
       }
       break;
     }
+    case "account.activated":
+    case "account.instantly_activated":
+    case "account.needs_clarification":
+    case "account.rejected": {
+      const acc = event.payload?.account?.entity;
+      const status = event.event === "account.needs_clarification" ? "needs_clarification" : event.event === "account.rejected" ? "rejected" : "activated";
+      if (acc?.id) await CaretakerProfile.updateOne({ razorpayLinkedAccountId: acc.id }, { payoutAccountStatus: status, payoutAccountNote: acc.notes?.reason ?? undefined });
+      break;
+    }
     default:
   }
 }
 
-/** Admin-triggered payout (manual bank transfer in v1). */
-export async function payoutBooking(admin, bookingId, { force = false } = {}) {
+/**
+ * Pays the caretaker for a completed stay.
+ * PAYOUT_MODE=manual: the admin transfers by bank and this records it.
+ * PAYOUT_MODE=route: Razorpay moves the money to the caretaker's linked account. Pass { manual: true } to pay by bank anyway.
+ * `admin` is null when the hourly job triggers it.
+ */
+export async function payoutBooking(admin, bookingId, { force = false, manual = false } = {}) {
   const booking = await Booking.findById(bookingId);
   if (!booking) throw notFound("Booking not found");
   if (booking.status !== "COMPLETED" || booking.payoutStatus !== "pending") throw conflict("Booking has no pending payout");
   const settings = await getSettings();
   const releaseAt = booking.completedAt.getTime() + settings.disputeWindowHours * 3_600_000;
   if (!force && Date.now() < releaseAt) throw conflict("Dispute window still open");
+
+  const useRoute = env.payoutMode === "route" && !manual;
+  const profile = useRoute ? await CaretakerProfile.findOne({ userId: booking.caretakerId }) : null;
+  if (useRoute && profile?.payoutAccountStatus !== "activated") {
+    throw conflict("The caretaker has not finished payout setup. Ask them to complete it, or pay manually");
+  }
+  const payment = await Payment.findOne({ bookingId, status: { $in: ["captured", "partially_refunded"] } });
+  if (useRoute && !payment?.razorpayPaymentId) throw conflict("No captured payment to pay out from");
+
   const claimed = await Booking.findOneAndUpdate({ _id: bookingId, payoutStatus: "pending" }, { payoutStatus: "paid" }, { returnDocument: "after" });
   if (!claimed) throw conflict("Payout already processed");
-  await Payment.updateOne(
-    { bookingId, status: { $in: ["captured", "partially_refunded"] } },
-    { payout: { status: "paid", transferId: "manual_" + Date.now(), amount: booking.caretakerGets, at: new Date() } },
-  );
-  await notify(booking.caretakerId, { type: "payout_released", title: "Payout released", body: `Rs ${(booking.caretakerGets / 100).toFixed(0)} is on its way`, link: "/caretaker/earnings" });
+
+  let transferId = "manual_" + Date.now();
+  if (useRoute) {
+    try {
+      const t = await createTransfer({ paymentId: payment.razorpayPaymentId, accountId: profile.razorpayLinkedAccountId, amount: booking.caretakerGets, notes: { bookingId: String(bookingId) } });
+      transferId = t.id;
+    } catch (err) {
+      await Booking.updateOne({ _id: bookingId }, { payoutStatus: "pending" }); // nothing moved: allow a retry
+      throw conflict(`Razorpay could not transfer the payout: ${err.error?.description ?? err.message}`);
+    }
+  }
+  await Payment.updateOne({ bookingId, status: { $in: ["captured", "partially_refunded"] } }, { payout: { status: "paid", transferId, amount: booking.caretakerGets, at: new Date() } });
+  await notify(booking.caretakerId, { type: "payout_released", title: "Payout released", body: `Rs ${(booking.caretakerGets / 100).toFixed(0)} is on its way${useRoute ? " to your bank account" : ""}`, link: "/caretaker/earnings" });
   return claimed;
+}
+
+/** Caretaker onboarding for automatic payouts (Razorpay Route). The PAN is passed to Razorpay and never stored here. */
+export async function setupPayoutAccount(user, { pan, address }) {
+  const profile = await CaretakerProfile.findOne({ userId: user._id });
+  if (!profile) throw forbidden("You are not a caretaker");
+  const bank = profile.bankDetails;
+  if (!bank?.accountNumber || !bank?.ifsc || !bank?.accountName) throw badRequest("Save your bank account details first");
+  if (!user.phone) throw badRequest("Add your phone number in Account settings first");
+  if (profile.payoutAccountStatus === "activated") throw conflict("Your payout account is already active");
+  try {
+    const acc = await createLinkedAccount({ userId: user._id, name: user.name, email: user.email, phone: user.phone, pan, address, bank });
+    profile.razorpayLinkedAccountId = acc.id;
+    profile.payoutAccountStatus = acc.status;
+    profile.payoutAccountNote = undefined;
+    await profile.save();
+    return profile;
+  } catch (err) {
+    throw badRequest(`Razorpay could not create the payout account: ${err.error?.description ?? err.message}`);
+  }
 }
 
 export async function createSalePayment(buyer, listingId) {

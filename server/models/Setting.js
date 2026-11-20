@@ -14,7 +14,7 @@ const settingSchema = new Schema({
   paymentDeadlineHours: { type: Number, default: 12 },
   requestExpiryHours: { type: Number, default: 24 },
   disputeWindowHours: { type: Number, default: 24 },
-  allowedPetTypes: { type: [String], default: ["Dog", "Cat", "Rabbit", "Bird"] },
+  allowedPetTypes: { type: [String], default: ["Dog", "Cat", "Rabbit", "Bird", "Other"] },
 });
 export const Setting = model("Setting", settingSchema);
 

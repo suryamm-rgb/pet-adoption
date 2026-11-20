@@ -15,7 +15,7 @@ export function createApp() {
   const app = express();
   app.set("trust proxy", 1);
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-  app.use(cors({ origin: env.clientUrl, credentials: true }));
+  app.use(cors({ origin: env.clientUrls, credentials: true }));
   app.use(rateLimit({ windowMs: 60_000, limit: env.nodeEnv === "test" ? 10_000 : 300 }));
 
   // The webhook needs the raw body for signature verification, so it is mounted before express.json().

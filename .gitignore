@@ -1,6 +1,9 @@
 .DS_Store
 node_modules
 .next
+.next-e2e
+test-results
+playwright-report
 out
 build
 coverage
@@ -9,5 +12,6 @@ npm-debug.log*
 .env
 .env*.local
 server/uploads
+server/private-uploads
 *.tsbuildinfo
 next-env.d.ts

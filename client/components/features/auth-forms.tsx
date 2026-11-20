@@ -13,6 +13,7 @@ import { photo } from "@/lib/images";
 import { Field, FormError, Input, Select } from "@/components/ui/form";
 import { api, errorText } from "@/lib/api";
 import { homeFor, useAuth } from "@/lib/auth";
+import { GoogleButton } from "./google-button";
 
 function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
@@ -55,7 +56,8 @@ export function LoginForm() {
 
   return (
     <AuthShell title="Welcome back" subtitle="Log in to manage pets and bookings" footer={<>New here? <Link href="/register" className="font-medium text-primary hover:underline">Create an account</Link></>}>
-      <form className="space-y-4" noValidate onSubmit={handleSubmit(async (v) => {
+      <GoogleButton onSuccess={(u) => router.push(next ?? homeFor(u))} onError={setError} />
+      <form className="mt-4 space-y-4" noValidate onSubmit={handleSubmit(async (v) => {
         setError("");
         try { const u = await login(v.email, v.password); router.push(next ?? homeFor(u)); } catch (e) { setError(errorText(e)); }
       })}>
@@ -87,7 +89,8 @@ export function RegisterForm() {
 
   return (
     <AuthShell title="Create your account" subtitle="Free to join. Takes a minute." footer={<>Already registered? <Link href="/login" className="font-medium text-primary hover:underline">Log in</Link></>}>
-      <form className="space-y-4" noValidate onSubmit={handleSubmit(async (v) => {
+      <GoogleButton role={role === "caretaker" ? "caretaker" : "owner"} onSuccess={(u) => router.push(role === "caretaker" ? "/caretaker/profile" : homeFor(u))} onError={setError} />
+      <form className="mt-4 space-y-4" noValidate onSubmit={handleSubmit(async (v) => {
         setError("");
         try { const u = await signUp(v); router.push(v.role === "caretaker" ? "/caretaker/profile" : homeFor(u)); } catch (e) { setError(errorText(e)); }
       })}>

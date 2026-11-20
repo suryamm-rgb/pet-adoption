@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { PageSkeleton } from "@/components/ui/feedback";
 import { useToast } from "@/components/toast";
+import { api, errorText } from "@/lib/api";
 import { useAuth, useRequireAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import type { Role } from "@/lib/types";
@@ -39,6 +40,30 @@ function RoleGate({ role, children }: { role: Role; children: React.ReactNode })
         )}
       </CardBody>
     </Card>
+  );
+}
+
+function VerifyBanner() {
+  const { user } = useAuth();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  if (!user || user.emailVerified) return null;
+  const resend = async () => {
+    setBusy(true);
+    try {
+      await api("/auth/resend-verification", { method: "POST" });
+      toast("success", `Verification email sent to ${user.email}`);
+    } catch (e) {
+      toast("error", errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning-600/30 bg-warning-50 px-4 py-3 text-sm text-warning-700">
+      <span>Please verify your email ({user.email}) to book stays.</span>
+      <Button size="sm" variant="secondary" loading={busy} onClick={resend}>Resend email</Button>
+    </div>
   );
 }
 
@@ -94,6 +119,7 @@ export function DashboardShell({ role, title, nav, children }: { role: Role; tit
       </header>
 
       <main className="mx-auto max-w-page p-4 pb-16 sm:p-6">
+        <VerifyBanner />
         <RoleGate role={role}>{children}</RoleGate>
       </main>
     </div>

@@ -107,6 +107,6 @@ describe("version 2: adoption, sale and shop", () => {
     assert.equal((await models.Product.findById(product._id)).stock, 1);
 
     assert.equal((await admin("PATCH", `/orders/${order._id}/status`, { status: "DELIVERED" })).status, 409); // cannot skip steps
-    for (const s of ["PACKED", "SHIPPED", "DELIVERED"]) assert.equal((await admin("PATCH", `/orders/${order._id}/status`, { status: s })).data.status, s);
+    for (const s of ["PACKED", "SHIPPED", "DELIVERED"]) assert.equal((await admin("PATCH", `/orders/${order._id}/status`, { status: s, ...(s === "SHIPPED" ? { courier: "BlueDart", trackingNumber: "BD0001234" } : {}) })).data.status, s);
   });
 });

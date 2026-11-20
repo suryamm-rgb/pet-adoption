@@ -39,3 +39,6 @@ export function estimateRefund(
   const percent = tier?.refundPercent ?? 0;
   return percent >= 100 ? b.ownerPays : Math.round((b.careAmount * percent) / 100);
 }
+
+/** "Other" pets carry a free-text type (e.g. Hamster). Show that instead of the word Other. */
+export const petTypeLabel = (type?: string, other?: string) => (type === "Other" && other ? other : type ?? "");

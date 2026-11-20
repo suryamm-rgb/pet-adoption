@@ -14,6 +14,6 @@ r.get("/:id", wrap(c.get));
 r.put("/:id", validate(pet.update), wrap(c.update));
 r.delete("/:id", wrap(c.remove));
 r.get("/:id/history", wrap(c.history));
-r.post("/:id/vaccination", upload("files"), wrap(c.vaccination));
+r.post("/:id/vaccination", upload("files", { private: true }), wrap(c.vaccination));
 r.post("/:id/photos", upload("files"), wrap(c.photos));
 export default r;

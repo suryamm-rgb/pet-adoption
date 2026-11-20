@@ -16,5 +16,7 @@ r.post("/cart", validate(shop.cart), wrap(c.cart));
 r.post("/orders", requireAuth, validate(shop.order), wrap(c.createOrder));
 r.get("/orders/mine", requireAuth, wrap(c.myOrders));
 r.get("/orders", requireAuth, requireRole("admin"), wrap(c.allOrders));
+r.get("/orders/seller", requireAuth, requireRole("seller"), wrap(c.sellerOrders));
+r.patch("/orders/:id/cancel", requireAuth, validate(shop.cancelOrder), wrap(c.cancelOrder));
 r.patch("/orders/:id/status", requireAuth, requireRole("admin", "seller"), validate(shop.orderStatus), wrap(c.updateStatus));
 export default r;

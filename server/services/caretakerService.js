@@ -1,8 +1,11 @@
+import { env } from "../config/env.js";
 import { Booking, CaretakerProfile, Review, User } from "../models/index.js";
 import { badRequest, forbidden, notFound } from "../utils/http.js";
-import { hasCapacity } from "./bookingService.js";
+import { hasCapacity, isBlocked } from "./bookingService.js";
 
 const PUBLIC_FIELDS = "userId bio city pricePerDay maxPets acceptedPetTypes homeType hasGarden experienceYears photos ratingAvg ratingCount";
+
+const SORTS = { rating: { ratingAvg: -1, ratingCount: -1 }, price_asc: { pricePerDay: 1 }, price_desc: { pricePerDay: -1 }, newest: { createdAt: -1 } };
 
 export function toPublic(profile, user) {
   return {
@@ -23,7 +26,7 @@ export function toPublic(profile, user) {
   };
 }
 
-export async function search({ city, from, to, petType, maxPrice, near }) {
+export async function search({ city, from, to, petType, maxPrice, near, sort = "rating" }) {
   const filter = { verificationStatus: "approved" };
   if (city) filter.city = new RegExp(`^${city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i");
   if (petType) filter.acceptedPetTypes = petType;
@@ -34,12 +37,12 @@ export async function search({ city, from, to, petType, maxPrice, near }) {
     const ids = await User.find({ location: { $geoWithin: { $centerSphere: [[lng, lat], km / 6378.1] } } }).distinct("_id");
     filter.userId = { $in: ids };
   }
-  let profiles = await CaretakerProfile.find(filter).select(PUBLIC_FIELDS).sort({ ratingAvg: -1 }).limit(60);
+  let profiles = await CaretakerProfile.find(filter).select(`${PUBLIC_FIELDS} blockedDates`).sort(SORTS[sort] ?? SORTS.rating).limit(60);
   if (from && to) {
     const start = new Date(from);
     const end = new Date(to);
     const free = await Promise.all(profiles.map((p) => hasCapacity(p.userId, start, end, p.maxPets)));
-    profiles = profiles.filter((_, i) => free[i]);
+    profiles = profiles.filter((p, i) => free[i] && !isBlocked(p, start, end));
   }
   const users = await User.find({ _id: { $in: profiles.map((p) => p.userId) } }).select("name city");
   const byId = new Map(users.map((u) => [String(u._id), u]));
@@ -76,6 +79,7 @@ export async function saveDocuments(user, { idProofUrl, addressProofUrl, photos 
 
 export async function submitForVerification(user) {
   const profile = await myProfile(user);
+  if (env.requirePhoneVerification && !user.phoneVerified) throw badRequest("Verify your phone number in Account settings first");
   if (!profile.idProofUrl || !profile.addressProofUrl) throw badRequest("Upload ID proof and address proof first");
   if (!profile.pricePerDay) throw badRequest("Set your price per day first");
   profile.verificationStatus = "pending";
@@ -85,7 +89,7 @@ export async function submitForVerification(user) {
 }
 
 export async function listReviews(userId) {
-  return Review.find({ toUserId: userId }).sort({ createdAt: -1 }).limit(50).populate("fromUserId", "name");
+  return Review.find({ toUserId: userId, hidden: { $ne: true } }).sort({ createdAt: -1 }).limit(50).populate("fromUserId", "name");
 }
 
 export async function earnings(user) {

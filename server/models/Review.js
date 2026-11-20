@@ -7,6 +7,8 @@ const reviewSchema = new Schema(
     toUserId: { ...id("User"), required: true },
     rating: { type: Number, min: 1, max: 5, required: true },
     comment: String,
+    reply: { text: String, at: Date },
+    hidden: { type: Boolean, default: false }, // set by an admin after a report
   },
   opts,
 );

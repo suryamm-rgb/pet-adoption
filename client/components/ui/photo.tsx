@@ -8,7 +8,7 @@ export function Photo({ src, alt = "", fallback = "🐾", className }: { src?: s
   const [failed, setFailed] = useState(false);
   if (!src || failed) {
     return (
-      <div className={cn("flex items-center justify-center bg-gradient-to-br from-brand-100 to-accent-100 text-5xl dark:from-brand-900 dark:to-accent-700/30", className)} role={alt ? "img" : undefined} aria-label={alt || undefined} aria-hidden={alt ? undefined : true}>
+      <div className={cn("flex items-center justify-center bg-gradient-to-br from-brand-100 to-accent-100 text-5xl", className)} role={alt ? "img" : undefined} aria-label={alt || undefined} aria-hidden={alt ? undefined : true}>
         {fallback}
       </div>
     );

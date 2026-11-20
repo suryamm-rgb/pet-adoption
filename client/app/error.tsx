@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { reportError } from "@/lib/report-error";
 
-export default function Error({ reset }: { error: Error; reset: () => void }) {
+export default function Error({ error, reset }: { error: Error; reset: () => void }) {
+  useEffect(() => reportError(error, "boundary"), [error]);
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 text-center">
       <p className="text-6xl" aria-hidden>😿</p>

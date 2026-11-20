@@ -8,12 +8,14 @@ import { Card, CardBody, StatCard } from "@/components/ui/card";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { Modal, Query } from "@/components/ui/feedback";
 import { Avatar, EmptyState, PageHeader, Section, WelcomeBanner } from "@/components/ui/misc";
+import { Pager } from "@/components/ui/pager";
 import { Table, Td, Th } from "@/components/ui/table";
 import { api, errorText, fileUrl } from "@/lib/api";
 import { formatDate, formatPaise, rupeesToPaise } from "@/lib/format";
 import { useAction, useGet } from "@/lib/hooks";
-import { nameOf, type Booking, type CaretakerProfile, type Dispute, type Listing, type Order, type Payment, type Settings, type User } from "@/lib/types";
+import { nameOf, type AuditEntry, type Booking, type CaretakerProfile, type Dispute, type Listing, type Order, type Payment, type Report, type Settings, type User } from "@/lib/types";
 import { BookingTable } from "./booking-table";
+import { ShipModal } from "./order-tracking";
 
 type Stats = { bookingsToday: number; activeStays: number; pendingVerifications: number; openDisputes: number; pendingListings: number; pendingPayouts: number; revenueMonth: number };
 
@@ -104,20 +106,25 @@ export function ListingApprovals() {
   );
 }
 
+const PAGE = 25;
+
 export function AllBookings() {
-  const q = useGet<Booking[]>("/admin/bookings", ["admin", "bookings"]);
+  const [page, setPage] = useState(1);
+  const q = useGet<Booking[]>(`/admin/bookings?page=${page}&limit=${PAGE}`, ["admin", "bookings", page]);
   return (
     <>
       <PageHeader title="Bookings" description="Every booking on the platform." />
-      <Query q={q}>{(list) => <BookingTable rows={list} viewer="admin" base="/admin/bookings" />}</Query>
+      <Query q={q}>{(list) => <><BookingTable rows={list} viewer="admin" base="/admin/bookings" /><Pager page={page} onPage={setPage} count={list.length} limit={PAGE} /></>}</Query>
     </>
   );
 }
 
 export function PaymentsAndPayouts() {
-  const payouts = useGet<Booking[]>("/admin/payouts/pending", ["admin", "payouts"]);
-  const payments = useGet<Payment[]>("/admin/payments", ["admin", "payments"]);
-  const pay = useAction(({ id, force }: { id: string; force: boolean }) => api(`/admin/payouts/${id}`, { method: "POST", body: { force } }), { success: "Marked as paid", invalidate: [["admin"]] });
+  const payouts = useGet<(Booking & { bankDetails?: { accountName?: string; accountNumber?: string; ifsc?: string } | null })[]>("/admin/payouts/pending", ["admin", "payouts"]);
+  const [page, setPage] = useState(1);
+  const payments = useGet<Payment[]>(`/admin/payments?page=${page}&limit=${PAGE}`, ["admin", "payments", page]);
+  const mode = useGet<Settings>("/settings/public", ["settings", "public"]).data?.features?.payoutMode ?? "manual";
+  const pay = useAction(({ id, force, manual }: { id: string; force: boolean; manual?: boolean }) => api(`/admin/payouts/${id}`, { method: "POST", body: { force, manual } }), { success: mode === "route" ? "Payout sent" : "Marked as paid", invalidate: [["admin"]] });
   const refund = useAction(({ id, amount }: { id: string; amount: number }) => api(`/payments/${id}/refund`, { method: "POST", body: { amount } }), { success: "Refund processed", invalidate: [["admin"]] });
   return (
     <>
@@ -126,8 +133,8 @@ export function PaymentsAndPayouts() {
         <Section title="Payouts waiting">
           <Query q={payouts}>
             {(list) => list.length ? (
-              <Table><thead><tr><Th>Caretaker</Th><Th>Completed</Th><Th>Amount</Th><Th><span className="sr-only">Action</span></Th></tr></thead>
-                <tbody>{list.map((b) => <tr key={b._id}><Td className="font-medium">{nameOf(b.caretakerId)}</Td><Td>{b.completedAt ? formatDate(b.completedAt) : "-"}</Td><Td>{formatPaise(b.caretakerGets)}</Td><Td><Button size="sm" loading={pay.isPending && pay.variables?.id === b._id} onClick={async () => { try { await pay.mutateAsync({ id: b._id, force: false }); } catch (e) { if (confirm(`${errorText(e)}\n\nRelease anyway?`)) pay.mutate({ id: b._id, force: true }); } }}>Release payout</Button></Td></tr>)}</tbody></Table>
+              <Table><thead><tr><Th>Caretaker</Th><Th>Bank account</Th><Th>Completed</Th><Th>Amount</Th><Th><span className="sr-only">Action</span></Th></tr></thead>
+                <tbody>{list.map((b) => <tr key={b._id}><Td className="font-medium">{nameOf(b.caretakerId)}</Td><Td className="text-xs">{b.bankDetails ? <>{b.bankDetails.accountName}<br />{b.bankDetails.accountNumber} · {b.bankDetails.ifsc}</> : <Badge tone="warning">No bank details</Badge>}</Td><Td>{b.completedAt ? formatDate(b.completedAt) : "-"}</Td><Td>{formatPaise(b.caretakerGets)}</Td><Td><div className="flex flex-wrap gap-1"><Button size="sm" loading={pay.isPending && pay.variables?.id === b._id} onClick={async () => { try { await pay.mutateAsync({ id: b._id, force: false }); } catch (e) { if (confirm(`${errorText(e)}\n\nRelease anyway?`)) pay.mutate({ id: b._id, force: true }); } }}>{mode === "route" ? "Pay via Razorpay" : "Release payout"}</Button>{mode === "route" && <Button size="sm" variant="ghost" onClick={() => { if (confirm("Mark as paid after you transfer by bank yourself?")) pay.mutate({ id: b._id, force: false, manual: true }); }}>Pay by bank</Button>}</div></Td></tr>)}</tbody></Table>
             ) : <EmptyState icon="💸" title="No payouts waiting" />}
           </Query>
         </Section>
@@ -141,6 +148,7 @@ export function PaymentsAndPayouts() {
                 ); })}</tbody></Table>
             ) : <EmptyState icon="💳" title="No payments yet" />}
           </Query>
+          {payments.data && <Pager page={page} onPage={setPage} count={payments.data.length} limit={PAGE} />}
         </Section>
       </div>
     </>
@@ -188,16 +196,19 @@ export function Disputes() {
 
 export function Users() {
   const [search, setSearch] = useState("");
-  const q = useGet<(User & { _id: string; isBlocked: boolean })[]>(`/admin/users${search ? `?q=${encodeURIComponent(search)}` : ""}`, ["admin", "users", search]);
+  const [page, setPage] = useState(1);
+  const q = useGet<(User & { _id: string; isBlocked: boolean })[]>(`/admin/users?page=${page}&limit=${PAGE}${search ? `&q=${encodeURIComponent(search)}` : ""}`, ["admin", "users", search, page]);
   const block = useAction(({ id, blocked }: { id: string; blocked: boolean }) => api(`/admin/users/${id}/block`, { method: "PATCH", body: { blocked } }), { success: "Updated", invalidate: [["admin", "users"]] });
   return (
     <>
       <PageHeader title="Users" description="Search, block or unblock accounts." />
-      <Input aria-label="Search users" placeholder="Search by name or email" value={search} onChange={(e) => setSearch(e.target.value)} className="mb-4 max-w-sm" />
+      <Input aria-label="Search users" placeholder="Search by name or email" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="mb-4 max-w-sm" />
       <Query q={q}>
-        {(list) => (
+        {(list) => (<>
           <Table><thead><tr><Th>Name</Th><Th>Email</Th><Th>Roles</Th><Th>Status</Th><Th><span className="sr-only">Action</span></Th></tr></thead>
             <tbody>{list.map((u) => <tr key={u._id}><Td className="font-medium">{u.name}</Td><Td>{u.email}</Td><Td><div className="flex flex-wrap gap-1">{u.roles.map((r) => <Badge key={r} tone={r === "admin" ? "danger" : "neutral"}>{r}</Badge>)}</div></Td><Td>{u.isBlocked ? <Badge tone="danger">Blocked</Badge> : <Badge tone="success">Active</Badge>}</Td><Td>{!u.roles.includes("admin") && <Button size="sm" variant={u.isBlocked ? "secondary" : "danger"} onClick={() => block.mutate({ id: u._id, blocked: !u.isBlocked })}>{u.isBlocked ? "Unblock" : "Block"}</Button>}</Td></tr>)}</tbody></Table>
+          <Pager page={page} onPage={setPage} count={list.length} limit={PAGE} />
+        </>
         )}
       </Query>
     </>
@@ -254,15 +265,76 @@ function SettingsEditor({ s }: { s: Settings }) {
 export function ShopOrders() {
   const q = useGet<(Order & { userId: { name: string } })[]>("/orders", ["admin", "orders"]);
   const next = { PLACED: "PACKED", PACKED: "SHIPPED", SHIPPED: "DELIVERED" } as Record<string, string>;
-  const advance = useAction(({ id, status }: { id: string; status: string }) => api(`/orders/${id}/status`, { method: "PATCH", body: { status } }), { success: "Order updated", invalidate: [["admin", "orders"]] });
+  const [shipping, setShipping] = useState<string | null>(null);
+  const advance = useAction(({ id, status, reason, courier, trackingNumber }: { id: string; status: string; reason?: string; courier?: string; trackingNumber?: string }) => api(status === "CANCELLED" ? `/orders/${id}/cancel` : `/orders/${id}/status`, { method: "PATCH", body: status === "CANCELLED" ? { reason } : { status, courier, trackingNumber } }), { success: "Order updated", invalidate: [["admin", "orders"]], onSuccess: () => setShipping(null) });
   return (
     <>
       <PageHeader title="Shop orders" description="Move orders from placed to delivered." />
       <Query q={q}>
         {(list) => list.length ? (
           <Table><thead><tr><Th>Order</Th><Th>Customer</Th><Th>Items</Th><Th>Total</Th><Th>Status</Th><Th><span className="sr-only">Action</span></Th></tr></thead>
-            <tbody>{list.map((o) => <tr key={o._id}><Td>#{o._id.slice(-6)}</Td><Td>{o.userId?.name}</Td><Td>{o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}</Td><Td>{formatPaise(o.total)}</Td><Td><StatusBadge status={o.status} /></Td><Td>{next[o.status] && <Button size="sm" onClick={() => advance.mutate({ id: o._id, status: next[o.status] })}>Mark {next[o.status].toLowerCase()}</Button>}</Td></tr>)}</tbody></Table>
+            <tbody>{list.map((o) => <tr key={o._id}><Td>#{o._id.slice(-6)}</Td><Td>{o.userId?.name}</Td><Td>{o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}</Td><Td>{formatPaise(o.total)}</Td><Td><StatusBadge status={o.status} /></Td><Td><div className="flex gap-1">{next[o.status] && <Button size="sm" onClick={() => next[o.status] === "SHIPPED" ? setShipping(o._id) : advance.mutate({ id: o._id, status: next[o.status] })}>Mark {next[o.status].toLowerCase()}</Button>} {o.status === "PLACED" && <Button size="sm" variant="ghost" onClick={() => { const reason = prompt("Reason for cancelling (the buyer is refunded in full)"); if (reason) advance.mutate({ id: o._id, status: "CANCELLED", reason }); }}>Cancel</Button>}</div></Td></tr>)}</tbody></Table>
         ) : <EmptyState icon="📦" title="No orders yet" />}
+      </Query>
+      <ShipModal open={!!shipping} onClose={() => setShipping(null)} busy={advance.isPending} onShip={(v) => shipping && advance.mutate({ id: shipping, status: "SHIPPED", ...v })} />
+    </>
+  );
+}
+
+const REASONS: Record<string, string> = { spam: "Spam", abuse: "Abuse", fraud: "Fraud", inappropriate: "Inappropriate", other: "Other" };
+
+export function Reports() {
+  const [status, setStatus] = useState("open");
+  const q = useGet<Report[]>(`/admin/reports?status=${status}`, ["admin", "reports", status]);
+  const resolve = useAction(({ id, action }: { id: string; action: "dismiss" | "remove" | "block_user" }) => api(`/admin/reports/${id}`, { method: "PATCH", body: { action } }), { success: "Report resolved", invalidate: [["admin", "reports"]] });
+  return (
+    <>
+      <PageHeader title="Reports" description="Content flagged by users. Remove it, block the author, or dismiss the report." />
+      <div className="mb-4 flex gap-2" role="group" aria-label="Status">
+        {["open", "actioned", "dismissed"].map((s) => <Button key={s} size="sm" variant={status === s ? "primary" : "secondary"} onClick={() => setStatus(s)} className="capitalize">{s}</Button>)}
+      </div>
+      <Query q={q}>
+        {(list) => list.length ? (
+          <ul className="space-y-3">{list.map((r) => (
+            <li key={r._id}><Card><CardBody className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium capitalize">{r.targetType} <span className="font-normal text-muted">#{r.targetId.slice(-6)}</span> <Badge tone="warning">{REASONS[r.reason] ?? r.reason}</Badge></p>
+                {r.details && <p className="mt-1 text-sm">{r.details}</p>}
+                <p className="mt-1 text-xs text-muted">Reported by {r.reporterId?.name} · {formatDate(r.createdAt)}</p>
+              </div>
+              {r.status === "open" ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="secondary" loading={resolve.isPending && resolve.variables?.id === r._id} onClick={() => resolve.mutate({ id: r._id, action: "dismiss" })}>Dismiss</Button>
+                  {r.targetType !== "user" && <Button size="sm" onClick={() => resolve.mutate({ id: r._id, action: "remove" })}>Remove content</Button>}
+                  <Button size="sm" variant="danger" onClick={() => { if (confirm("Block the author of this content?")) resolve.mutate({ id: r._id, action: "block_user" }); }}>Remove and block author</Button>
+                </div>
+              ) : <Badge tone={r.status === "actioned" ? "success" : "neutral"}>{r.status}</Badge>}
+            </CardBody></Card></li>
+          ))}</ul>
+        ) : <EmptyState icon="🛡️" title={`No ${status} reports`} />}
+      </Query>
+    </>
+  );
+}
+
+export function AuditLog() {
+  const [page, setPage] = useState(1);
+  const [action, setAction] = useState("");
+  const q = useGet<AuditEntry[]>(`/admin/audit?page=${page}&limit=${PAGE}${action ? `&action=${action}` : ""}`, ["admin", "audit", action, page]);
+  return (
+    <>
+      <PageHeader title="Audit log" description="Every admin action, newest first." />
+      <Select aria-label="Filter by action" value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }} className="mb-4 max-w-xs">
+        <option value="">All actions</option><option value="caretaker">Verifications</option><option value="user">Blocks</option><option value="dispute">Disputes</option><option value="payout">Payouts</option><option value="listing">Listings</option><option value="report">Reports</option><option value="settings">Settings</option>
+      </Select>
+      <Query q={q}>
+        {(list) => list.length ? (
+          <>
+            <Table><thead><tr><Th>When</Th><Th>Admin</Th><Th>Action</Th><Th>Target</Th><Th>Details</Th></tr></thead>
+              <tbody>{list.map((e) => <tr key={e._id}><Td className="whitespace-nowrap">{formatDate(e.createdAt)}</Td><Td>{e.adminId?.name ?? "-"}</Td><Td><Badge tone="info">{e.action}</Badge></Td><Td className="font-mono text-xs">{e.target.slice(-8)}</Td><Td className="max-w-xs truncate font-mono text-xs">{e.meta ? JSON.stringify(e.meta) : ""}</Td></tr>)}</tbody></Table>
+            <Pager page={page} onPage={setPage} count={list.length} limit={PAGE} />
+          </>
+        ) : <EmptyState icon="📜" title="Nothing logged yet" />}
       </Query>
     </>
   );

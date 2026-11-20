@@ -11,8 +11,11 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatDate, formatPaise } from "@/lib/format";
 import { useAction, useGet } from "@/lib/hooks";
-import { idOf, nameOf, type AdoptionRequest, type Listing, type Product } from "@/lib/types";
+import { idOf, nameOf, type AdoptionRequest, type Listing, type Order, type Product } from "@/lib/types";
+import { StatusBadge } from "@/components/ui/badge";
+import { Table, Td, Th } from "@/components/ui/table";
 import { Chat } from "./chat";
+import { ShipModal } from "./order-tracking";
 import { ListingCard } from "./listing-views";
 
 const reqTone = (s: string) => (s === "approved" ? "success" : s === "rejected" ? "danger" : s === "completed" ? "brand" : "warning");
@@ -124,6 +127,32 @@ export function SellerProducts() {
           </form>
         </CardBody></Card>
       </div>
+    </>
+  );
+}
+
+const NEXT_STATUS: Record<string, string> = { PLACED: "PACKED", PACKED: "SHIPPED", SHIPPED: "DELIVERED" };
+
+export function SellerOrders() {
+  const q = useGet<(Order & { userId: { name: string } })[]>("/orders/seller", ["orders", "seller"]);
+  const [shipping, setShipping] = useState<string | null>(null);
+  const advance = useAction(({ id, status, reason, courier, trackingNumber }: { id: string; status: string; reason?: string; courier?: string; trackingNumber?: string }) => api(status === "CANCELLED" ? `/orders/${id}/cancel` : `/orders/${id}/status`, { method: "PATCH", body: status === "CANCELLED" ? { reason } : { status, courier, trackingNumber } }), { success: "Order updated", invalidate: [["orders"]], onSuccess: () => setShipping(null) });
+  return (
+    <>
+      <PageHeader title="Shop orders" description="Orders containing your products. Pack, ship and deliver them." />
+      <Query q={q}>
+        {(list) => list.length ? (
+          <Table><thead><tr><Th>Order</Th><Th>Customer</Th><Th>Items</Th><Th>Ship to</Th><Th>Status</Th><Th><span className="sr-only">Action</span></Th></tr></thead>
+            <tbody>{list.map((o) => (
+              <tr key={o._id}><Td>#{o._id.slice(-6)}</Td><Td>{o.userId?.name}</Td><Td>{o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}</Td><Td className="max-w-xs text-xs">{o.address}</Td><Td><StatusBadge status={o.status} /></Td>
+                <Td><div className="flex gap-1">
+                  {NEXT_STATUS[o.status] && <Button size="sm" loading={advance.isPending && advance.variables?.id === o._id} onClick={() => NEXT_STATUS[o.status] === "SHIPPED" ? setShipping(o._id) : advance.mutate({ id: o._id, status: NEXT_STATUS[o.status] })}>Mark {NEXT_STATUS[o.status].toLowerCase()}</Button>}
+                  {o.status === "PLACED" && <Button size="sm" variant="ghost" onClick={() => { const reason = prompt("Reason (the buyer is refunded in full)"); if (reason) advance.mutate({ id: o._id, status: "CANCELLED", reason }); }}>Cancel</Button>}
+                </div></Td></tr>
+            ))}</tbody></Table>
+        ) : <EmptyState icon="📦" title="No orders yet" text="Paid orders with your products appear here." />}
+      </Query>
+      <ShipModal open={!!shipping} onClose={() => setShipping(null)} busy={advance.isPending} onShip={(v) => shipping && advance.mutate({ id: shipping, status: "SHIPPED", ...v })} />
     </>
   );
 }

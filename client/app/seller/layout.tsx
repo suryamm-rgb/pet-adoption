@@ -6,6 +6,7 @@ const nav = [
   { href: "/seller/listings/new", label: "New listing", icon: "➕" },
   { href: "/seller/requests", label: "Adoption requests", icon: "💞" },
   { href: "/seller/products", label: "Products", icon: "🛍️" },
+  { href: "/seller/orders", label: "Shop orders", icon: "📦" },
 ];
 
 // These areas depend on the logged-in session, which is only known in the browser, so they may block.

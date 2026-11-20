@@ -13,6 +13,7 @@ type AuthValue = {
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   register: (input: RegisterInput) => Promise<User>;
+  googleLogin: (credential: string, role: "owner" | "caretaker") => Promise<User>;
   logout: () => Promise<void>;
   addRole: (role: Role) => Promise<void>;
 };
@@ -55,6 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       async register(input) {
         const { user } = await api<{ user: User }>("/auth/register", { method: "POST", body: input });
+        setUser(user);
+        return user;
+      },
+      async googleLogin(credential, role) {
+        const { user } = await api<{ user: User }>("/auth/google", { method: "POST", body: { credential, role } });
         setUser(user);
         return user;
       },

@@ -19,9 +19,37 @@ import { payWithRazorpay } from "@/lib/razorpay";
 import type { Booking, DailyUpdate, Review, Settings } from "@/lib/types";
 import { idOf, nameOf } from "@/lib/types";
 import { Chat } from "./chat";
+import { CheckInPanel } from "./checkins";
 
 const STEPS = ["REQUESTED", "ACCEPTED", "PAID", "IN_CARE", "COMPLETED"] as const;
 const label = (s: string) => s.replace("_", " ").toLowerCase().replace(/^./, (c) => c.toUpperCase());
+
+type Event = { at: string; icon: string; text: string };
+
+/** One running story of the stay: status changes, instructions and every daily update, newest first. */
+function ActivityFeed({ b, updates }: { b: Booking; updates: DailyUpdate[] }) {
+  const events: Event[] = [
+    { at: b.createdAt, icon: "📨", text: "Booking requested" },
+    ...(b.acceptedAt ? [{ at: b.acceptedAt, icon: "✅", text: "Caretaker accepted" }] : []),
+    ...b.instructions.map((i) => ({ at: i.at, icon: "📝", text: `Instruction: ${i.text}${i.acknowledged ? " (read)" : ""}` })),
+    ...updates.map((u) => ({ at: u.createdAt, icon: u.photos.length ? "📸" : "💬", text: u.note || "Photo update" })),
+    ...(b.completedAt ? [{ at: b.completedAt, icon: "🏁", text: "Stay completed" }] : []),
+  ].sort((x, y) => +new Date(y.at) - +new Date(x.at));
+  return (
+    <Card><CardBody>
+      <h2 className="font-semibold">Activity</h2>
+      <ol className="mt-3 space-y-3 border-l-2 border-border pl-4">
+        {events.map((e, i) => (
+          <li key={i} className="relative text-sm">
+            <span aria-hidden className="absolute -left-[1.6rem] top-0 flex size-5 items-center justify-center rounded-full bg-surface text-xs">{e.icon}</span>
+            <p className="line-clamp-2">{e.text}</p>
+            <p className="text-xs text-muted">{formatDateTime(e.at)}</p>
+          </li>
+        ))}
+      </ol>
+    </CardBody></Card>
+  );
+}
 
 function Timeline({ status }: { status: string }) {
   const idx = STEPS.indexOf(status as (typeof STEPS)[number]);
@@ -94,6 +122,7 @@ export function BookingDetail({ role }: { role: "owner" | "caretaker" | "admin" 
             <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
               <div className="space-y-6">
                 {role === "caretaker" && b.status === "IN_CARE" && <PostUpdate bookingId={b._id} />}
+                <CheckInPanel bookingId={b._id} role={role} status={b.status} />
 
                 <Card><CardBody>
                   <h2 className="font-semibold">Daily updates</h2>
@@ -133,6 +162,7 @@ export function BookingDetail({ role }: { role: "owner" | "caretaker" | "admin" 
               </div>
 
               <div className="space-y-6">
+                <ActivityFeed b={b} updates={updates.data ?? []} />
                 <Card><CardBody className="space-y-4">
                   <h2 className="font-semibold">Payment</h2>
                   <dl className="space-y-2 text-sm">

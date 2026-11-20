@@ -16,7 +16,7 @@ export function Avatar({ name, src, className }: { name: string; src?: string; c
   );
 }
 
-const petEmoji: Record<string, string> = { Dog: "🐶", Cat: "🐱", Rabbit: "🐰", Bird: "🐦" };
+const petEmoji: Record<string, string> = { Dog: "🐶", Cat: "🐱", Rabbit: "🐰", Bird: "🐦", Other: "🐾" };
 export const emojiFor = (type?: string) => petEmoji[type ?? ""] ?? "🐾";
 
 export function PetAvatar({ type, photo, className }: { type?: string; photo?: string; className?: string }) {

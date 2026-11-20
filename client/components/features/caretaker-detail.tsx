@@ -12,6 +12,7 @@ import { formatDate, formatPaise } from "@/lib/format";
 import { useGet } from "@/lib/hooks";
 import { nameOf, type Caretaker, type Review } from "@/lib/types";
 import { BookingForm } from "./booking-form";
+import { ReportButton } from "./report-button";
 
 export function CaretakerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -66,6 +67,8 @@ export function CaretakerDetail() {
                           </div>
                           <p className="text-accent-500" aria-label={`${r.rating} stars`}>{"★".repeat(r.rating)}<span className="text-border-strong">{"★".repeat(5 - r.rating)}</span></p>
                           {r.comment && <p className="mt-1 text-sm">{r.comment}</p>}
+                          {r.reply?.text && <p className="mt-2 rounded-md bg-surface-muted px-3 py-2 text-sm"><span className="font-medium">Reply from {c.name.split(" ")[0]}: </span>{r.reply.text}</p>}
+                          <div className="mt-1 text-right"><ReportButton targetType="review" targetId={r._id} /></div>
                         </li>
                       ))}
                     </ul>
@@ -74,6 +77,7 @@ export function CaretakerDetail() {
               </CardBody>
             </Card>
             <p className="text-xs text-muted">The exact address is shown only after your booking is confirmed and paid.</p>
+            <div className="text-right"><ReportButton targetType="user" targetId={c.id} label="Report this caretaker" /></div>
           </div>
           <BookingForm caretaker={c} />
         </div>

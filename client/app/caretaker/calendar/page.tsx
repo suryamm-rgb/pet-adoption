@@ -10,7 +10,7 @@ export const instant = false;
 export default function Page() {
   return (
     <>
-      <PageHeader title="Availability calendar" description="See which days are already booked." />
+      <PageHeader title="Availability calendar" description="See booked days and block the days you are not available." />
       <Calendar />
     </>
   );

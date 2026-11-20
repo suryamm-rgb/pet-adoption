@@ -6,7 +6,7 @@ import { forbidden, unauthorized, wrap } from "../utils/http.js";
 export const COOKIE = "token";
 
 export function signToken(user) {
-  return jwt.sign({ sub: String(user._id) }, env.jwtSecret, { expiresIn: "7d" });
+  return jwt.sign({ sub: String(user._id), tv: user.tokenVersion ?? 0 }, env.jwtSecret, { expiresIn: "7d" });
 }
 
 export function setAuthCookie(res, token) {
@@ -23,9 +23,9 @@ async function loadUser(req) {
   const token = req.cookies?.[COOKIE] ?? (header?.startsWith("Bearer ") ? header.slice(7) : null);
   if (!token) return null;
   try {
-    const { sub } = jwt.verify(token, env.jwtSecret);
+    const { sub, tv = 0 } = jwt.verify(token, env.jwtSecret);
     const user = await User.findById(sub);
-    return user && !user.isBlocked ? user : null;
+    return user && !user.isBlocked && !user.deletedAt && (user.tokenVersion ?? 0) === tv ? user : null;
   } catch {
     return null;
   }

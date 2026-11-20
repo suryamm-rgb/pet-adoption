@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: "standalone", // small self-contained build for Docker
+  distDir: process.env.NEXT_DIST_DIR ?? ".next", // end-to-end tests use their own build folder so they never clash with `next dev`
+  poweredByHeader: false,
   experimental: {
     agentFeedback: true,
   },

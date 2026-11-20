@@ -8,7 +8,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Query } from "@/components/ui/feedback";
 import { EmptyState, PetAvatar } from "@/components/ui/misc";
 import { api, fileUrl } from "@/lib/api";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, petTypeLabel } from "@/lib/format";
 import { useAction, useGet } from "@/lib/hooks";
 import type { Pet } from "@/lib/types";
 import { PetForm } from "./pet-form";
@@ -27,7 +27,7 @@ export function PetList() {
                     <PetAvatar type={p.type} photo={p.photos[0]} />
                     <div className="min-w-0">
                       <p className="font-semibold">{p.name}</p>
-                      <p className="truncate text-sm text-muted">{[p.breed, p.age].filter(Boolean).join(" · ") || p.type}</p>
+                      <p className="truncate text-sm text-muted">{[p.breed, p.age].filter(Boolean).join(" · ") || petTypeLabel(p.type, p.otherType)}</p>
                       <div className="mt-1.5">{p.vaccinationDocs.length ? <Badge tone="success">Vaccination uploaded</Badge> : <Badge tone="warning">Certificate needed</Badge>}</div>
                     </div>
                   </CardBody>

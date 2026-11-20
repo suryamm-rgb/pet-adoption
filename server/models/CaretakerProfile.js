@@ -20,7 +20,10 @@ const caretakerProfileSchema = new Schema(
     ratingAvg: { type: Number, default: 0 },
     ratingCount: { type: Number, default: 0 },
     bankDetails: { accountName: String, accountNumber: String, ifsc: String },
+    blockedDates: [String], // "YYYY-MM-DD" days the caretaker is unavailable
     razorpayLinkedAccountId: String,
+    payoutAccountStatus: { type: String, enum: ["none", "created", "activated", "needs_clarification", "rejected"], default: "none" },
+    payoutAccountNote: String,
   },
   opts,
 );

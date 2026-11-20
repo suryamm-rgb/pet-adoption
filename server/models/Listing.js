@@ -9,6 +9,7 @@ export const Listing = model(
       petId: id("Pet"),
       title: String,
       petType: String,
+      otherPetType: String, // free text when petType is "Other"
       mode: { type: String, enum: ["adopt", "sell"], required: true },
       price: { type: Number, default: 0 },
       description: String,

@@ -20,7 +20,7 @@ const links = [
 export function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight">
-      <span aria-hidden className="flex size-8 items-center justify-center rounded-lg bg-brand-gradient text-base shadow-glow">🐾</span>
+      <span aria-hidden className="flex size-8 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-base">🐾</span>
       PawStay
     </Link>
   );
@@ -48,7 +48,7 @@ export function SiteHeader() {
         <div className="flex items-center gap-1 sm:gap-2">
           <Link href="/shop/cart" aria-label={`Cart, ${count} items`} className="relative inline-flex size-10 items-center justify-center rounded-md hover:bg-surface-muted">
             <span aria-hidden>🛒</span>
-            {count > 0 && <span className="absolute right-1 top-1 min-w-4 rounded-full bg-accent-500 px-1 text-center text-[10px] font-semibold leading-4 text-white">{count}</span>}
+            {count > 0 && <span className="absolute right-1 top-1 min-w-4 rounded-full bg-danger-600 px-1 text-center text-[10px] font-semibold leading-4 text-white">{count}</span>}
           </Link>
           {user ? (
             <>

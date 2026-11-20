@@ -17,7 +17,7 @@ export function SiteFooter() {
         </div>
         {cols.map((c) => (
           <nav key={c.title} aria-label={c.title}>
-            <p className="text-sm font-semibold text-accent-300">{c.title}</p>
+            <p className="text-sm font-semibold text-brand-300">{c.title}</p>
             <ul className="mt-3 space-y-2 text-sm text-white/75">
               {c.links.map(([label, href]) => (
                 <li key={href}><Link href={href} className="hover:text-white hover:underline">{label}</Link></li>

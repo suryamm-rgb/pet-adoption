@@ -8,6 +8,7 @@ const nav = [
   { href: "/caretaker/stays", label: "Active stays", icon: "🐕" },
   { href: "/caretaker/calendar", label: "Availability", icon: "🗓️" },
   { href: "/caretaker/earnings", label: "Earnings", icon: "💰" },
+  { href: "/caretaker/reviews", label: "Reviews", icon: "⭐" },
 ];
 
 // These areas depend on the logged-in session, which is only known in the browser, so they may block.

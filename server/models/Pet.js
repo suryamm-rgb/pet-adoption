@@ -5,6 +5,7 @@ const petSchema = new Schema(
     ownerId: { ...id("User"), required: true, index: true },
     name: { type: String, required: true },
     type: { type: String, required: true },
+    otherType: String, // free text when type is "Other", e.g. Hamster
     breed: String,
     age: String,
     gender: String,

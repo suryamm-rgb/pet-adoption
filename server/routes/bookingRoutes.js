@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 import { upload } from "../middleware/upload.js";
 import { validate } from "../middleware/validate.js";
 import { wrap } from "../utils/http.js";
-import { booking, social } from "../utils/schemas.js";
+import { booking, checkin, social } from "../utils/schemas.js";
 
 const r = Router();
 r.use(requireAuth);
@@ -25,5 +25,7 @@ r.get("/:id/messages", wrap(c.listMessages));
 r.post("/:id/messages", validate(social.message), wrap(c.postMessage));
 r.post("/:id/reviews", validate(social.review), wrap(c.review));
 r.post("/:id/disputes", upload("files"), validate(social.dispute), wrap(c.dispute));
+r.post("/:id/checkins", requireRole("caretaker"), validate(checkin.create), wrap(c.createCheckin));
+r.get("/:id/checkins", wrap(c.listCheckins));
 r.post("/:id/emergency", requireRole("caretaker"), wrap(c.emergency));
 export default r;

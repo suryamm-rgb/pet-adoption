@@ -15,3 +15,6 @@ export * from "./Order.js";
 export * from "./Notification.js";
 export * from "./AuditLog.js";
 export * from "./Setting.js";
+export * from "./Report.js";
+export * from "./CheckIn.js";
+export * from "./PushSubscription.js";

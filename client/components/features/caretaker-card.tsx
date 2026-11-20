@@ -9,7 +9,7 @@ import type { Caretaker } from "@/lib/types";
 export function CaretakerCard({ c }: { c: Caretaker }) {
   const cover = c.photos?.[0] ? fileUrl(c.photos[0]) : petPhoto(c.acceptedPetTypes[0], c.id, 640, 420);
   return (
-    <Link href={`/caretakers/${c.id}`} className="group block h-full">
+    <Link href={`/caretakers/${c.id}`} aria-label={`View profile of ${c.name}`} className="group block h-full">
       <article className="h-full overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition duration-300 group-hover:-translate-y-1 group-hover:shadow-pop">
         <div className="relative aspect-[16/10] overflow-hidden">
           <Photo src={cover} alt="" fallback={emojiFor(c.acceptedPetTypes[0])} className="size-full transition duration-500 group-hover:scale-105" />

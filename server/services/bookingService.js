@@ -16,6 +16,16 @@ export async function getBookingFor(user, bookingId) {
   return booking;
 }
 
+/** True when any day from start to end (inclusive) is in the caretaker's blocked-dates list. */
+export function isBlocked(profile, startDate, endDate) {
+  if (!profile.blockedDates?.length) return false;
+  const blocked = new Set(profile.blockedDates);
+  for (let d = new Date(startDate); d <= endDate; d = new Date(d.getTime() + 86_400_000)) {
+    if (blocked.has(d.toISOString().slice(0, 10))) return true;
+  }
+  return false;
+}
+
 export async function hasCapacity(caretakerId, startDate, endDate, maxPets, excludeId) {
   const overlapping = await Booking.countDocuments({
     caretakerId,
@@ -42,11 +52,14 @@ export async function createBooking(owner, { caretakerId, petId, startDate, endD
   ]);
   if (!pet) throw notFound("Pet not found");
   if (!profile) throw notFound("Caretaker not available");
-  if (!settings.allowedPetTypes.includes(pet.type)) throw badRequest(`${pet.type} is not supported`);
+  const petLabel = pet.type === "Other" && pet.otherType ? pet.otherType : pet.type;
+  // "Other" is always bookable so existing settings without it keep working; caretakers opt in per profile.
+  if (pet.type !== "Other" && !settings.allowedPetTypes.includes(pet.type)) throw badRequest(`${petLabel} is not supported`);
   if (profile.acceptedPetTypes.length && !profile.acceptedPetTypes.includes(pet.type)) {
-    throw badRequest(`This caretaker does not accept ${pet.type}`);
+    throw badRequest(`This caretaker does not accept ${petLabel}`);
   }
   if (!pet.vaccinationDocs.length) throw badRequest("Upload a vaccination certificate for this pet first");
+  if (isBlocked(profile, start, end)) throw conflict("Caretaker is not available on some of these dates");
   if (!(await hasCapacity(caretakerId, start, end, profile.maxPets))) throw conflict("Caretaker is fully booked for these dates");
 
   const days = countDays(start, end);
@@ -76,6 +89,7 @@ export async function acceptBooking(caretaker, bookingId) {
   if (String(booking.caretakerId) !== String(caretaker._id)) throw forbidden();
   const profile = await CaretakerProfile.findOne({ userId: caretaker._id, verificationStatus: "approved" });
   if (!profile) throw forbidden("Your profile is not approved yet");
+  if (isBlocked(profile, booking.startDate, booking.endDate)) throw conflict("You marked some of these dates as unavailable");
   if (!(await hasCapacity(caretaker._id, booking.startDate, booking.endDate, profile.maxPets, booking._id))) {
     throw conflict("You are fully booked for these dates");
   }

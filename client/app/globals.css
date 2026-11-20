@@ -3,41 +3,41 @@
 /*
  * Design tokens
  * 1. Raw scales (brand, accent)       -> @theme   (generates bg-brand-600, text-accent-500 ...)
- * 2. Semantic tokens (surface, text)  -> :root + [data-theme=dark], exposed through @theme inline
+ * 2. Semantic tokens (surface, text)  -> :root, exposed through @theme inline
  * 3. Status tokens (booking states)   -> success / warning / danger / info
- * Components use semantic tokens only, so dark mode and re-branding need no component changes.
+ * Components use semantic tokens only, so re-branding needs no component changes.
  */
 
 @theme {
-  /* Brand: vivid teal */
-  --color-brand-50: #e8fbf6;
-  --color-brand-100: #c5f4e8;
-  --color-brand-200: #8fe8d3;
-  --color-brand-300: #55d6bc;
-  --color-brand-400: #22bda3;
-  --color-brand-500: #0ea58f;
-  --color-brand-600: #0a8c79;
-  --color-brand-700: #0a7062;
-  --color-brand-800: #0b574d;
-  --color-brand-900: #0b4640;
+  /* Brand: warm terracotta orange (buttons, links, highlights). 600 passes 4.5:1 with white text */
+  --color-brand-50: #fff5ea;
+  --color-brand-100: #ffe6cc;
+  --color-brand-200: #fccd9c;
+  --color-brand-300: #f9ae66;
+  --color-brand-400: #f48f35;
+  --color-brand-500: #e57714;
+  --color-brand-600: #c2570c;
+  --color-brand-700: #9a4509;
+  --color-brand-800: #5c3319;
+  --color-brand-900: #3d2314;
 
-  /* Accent: sunny orange */
-  --color-accent-50: #fff6ec;
-  --color-accent-100: #ffe8cf;
-  --color-accent-200: #ffd0a1;
-  --color-accent-300: #ffb36b;
-  --color-accent-400: #ff9540;
-  --color-accent-500: #ff7a1a;
-  --color-accent-600: #f06400;
-  --color-accent-700: #c45000;
+  /* Accent: soft gold (ratings, highlights) */
+  --color-accent-50: #fff8e6;
+  --color-accent-100: #fdeec3;
+  --color-accent-200: #f9dd92;
+  --color-accent-300: #f5cb67;
+  --color-accent-400: #f2b33d;
+  --color-accent-500: #e9a023;
+  --color-accent-600: #c9811a;
+  --color-accent-700: #8a560e;
 
-  /* Sky and berry, used for colourful highlights */
-  --color-sky-100: #dcf0ff;
-  --color-sky-600: #1d8fe0;
-  --color-berry-100: #ffe1ee;
-  --color-berry-600: #e0457f;
-  --color-sun-100: #fff2bf;
-  --color-sun-600: #d99a00;
+  /* Soft tints for category tiles: sage, blush, butter */
+  --color-sky-100: #e3eedc;
+  --color-sky-600: #4f7a47;
+  --color-berry-100: #f8e0d4;
+  --color-berry-600: #b4532a;
+  --color-sun-100: #fbefc9;
+  --color-sun-600: #a8730b;
 
   /* Status */
   --color-success-50: #ecfdf3;
@@ -65,8 +65,8 @@
   --radius-xl: 1.25rem;
 
   /* Shadows */
-  --shadow-card: 0 1px 2px rgb(120 80 20 / 0.06), 0 4px 14px -6px rgb(120 80 20 / 0.14);
-  --shadow-pop: 0 18px 40px -14px rgb(60 40 10 / 0.3);
+  --shadow-card: 0 1px 2px rgb(90 55 20 / 0.06), 0 4px 14px -6px rgb(90 55 20 / 0.14);
+  --shadow-pop: 0 16px 36px -14px rgb(60 35 12 / 0.32);
 
   /* Layout */
   --container-page: 72rem;
@@ -76,38 +76,20 @@
 
 /* Semantic tokens: light (default) */
 :root {
-  --background: #fff9f1;
-  --surface: #ffffff;
-  --surface-muted: #fff0dd;
-  --border: #f0e2cf;
-  --border-strong: #dccab2;
-  --foreground: #1d2433;
-  --muted: #667085;
+  --background: #faf5ed;
+  --surface: #fffdfa;
+  --surface-muted: #f5ecdf;
+  --border: #ecdfcc;
+  --border-strong: #d9c7ae;
+  --foreground: #2d2118;
+  --muted: #75675a;
   --primary: var(--color-brand-600);
   --primary-hover: var(--color-brand-700);
   --primary-soft: var(--color-brand-50);
   --primary-foreground: #ffffff;
-  --ring: var(--color-brand-400);
-  --hero-a: #c9f4e8;
-  --hero-b: #ffe2bd;
-}
-
-/* Semantic tokens: dark (opt in with <html data-theme="dark">) */
-:root[data-theme="dark"] {
-  --background: #0f1110;
-  --surface: #181b1a;
-  --surface-muted: #202423;
-  --border: #2c3130;
-  --border-strong: #3d4341;
-  --foreground: #f2f2ef;
-  --muted: #a3a39d;
-  --primary: var(--color-brand-400);
-  --primary-hover: var(--color-brand-300);
-  --primary-soft: #16302d;
-  --primary-foreground: #06201c;
-  --ring: var(--color-brand-400);
-  --hero-a: #16302d;
-  --hero-b: #2a1a0e;
+  --ring: var(--color-brand-500);
+  --hero-a: #fbdcc0;
+  --hero-b: #efe6d3;
 }
 
 @theme inline {
@@ -142,6 +124,17 @@
     font-family: var(--font-sans);
   }
 
+  /* Native dropdown arrow replaced by a consistent chevron . */
+  .select-chevron,
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 1rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%238a7a6a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 8 5 5 5-5'/%3E%3C/svg%3E");
+  }
+  input[type="date"] { min-height: 2.75rem; }
   select option {
     background: var(--surface);
     color: var(--foreground);
@@ -157,11 +150,11 @@
   --animate-toast: toast-in 0.25s ease-out;
   --animate-shimmer: shimmer 1.4s linear infinite;
   --animate-float: float 6s ease-in-out infinite;
-  --shadow-glow: 0 14px 38px -12px rgb(14 165 143 / 0.55);
+  --shadow-glow: 0 12px 30px -14px rgb(194 87 12 / 0.45);
   --background-image-hero: radial-gradient(60rem 30rem at 85% -10%, var(--hero-a), transparent 60%),
     radial-gradient(40rem 24rem at -10% 20%, var(--hero-b), transparent 55%);
-  --background-image-brand-gradient: linear-gradient(135deg, var(--color-brand-400), var(--color-brand-600) 55%, var(--color-brand-800));
-  --background-image-sunny: linear-gradient(135deg, var(--color-accent-400), #ff5e3a);
+  --background-image-brand-gradient: linear-gradient(135deg, var(--color-brand-600), var(--color-brand-800) 70%, var(--color-brand-900));
+  --background-image-sunny: linear-gradient(135deg, var(--color-brand-700), var(--color-brand-900));
 
   @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }

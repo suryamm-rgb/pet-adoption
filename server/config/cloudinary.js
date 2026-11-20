@@ -8,4 +8,7 @@ if (cloudinaryEnabled) {
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
 }
+if (process.env.NODE_ENV === "production" && !cloudinaryEnabled) {
+  console.warn("[storage] Cloudinary is not configured: uploads are saved on local disk. Mount volumes or set CLOUDINARY_* before going live");
+}
 export { cloudinary };

@@ -1,19 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, StatCard } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/form";
 import { Query } from "@/components/ui/feedback";
 import { EmptyState, Section, WelcomeBanner } from "@/components/ui/misc";
 import { photo } from "@/lib/images";
 import { Table, Td, Th } from "@/components/ui/table";
-import { API_URL } from "@/lib/api";
+import { API_URL, api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatDate, formatPaise } from "@/lib/format";
-import { useGet } from "@/lib/hooks";
+import { useAction, useGet } from "@/lib/hooks";
 import { nameOf, type AdoptionRequest, type Booking, type Listing, type Payment, type Pet, type Review } from "@/lib/types";
 import { BookingTable } from "./booking-table";
+import { ReportButton } from "./report-button";
 
 export function OwnerDashboard() {
   const { user } = useAuth();
@@ -34,7 +37,7 @@ export function OwnerDashboard() {
                 <StatCard icon="🧾" label="Total bookings" value={String(list.length)} />
               </div>
               {!!needsPayment.length && (
-                <Card className="border-accent-300 bg-accent-50 text-foreground dark:bg-accent-700/20"><CardBody className="flex flex-wrap items-center justify-between gap-3">
+                <Card className="border-accent-300 bg-accent-50 text-foreground"><CardBody className="flex flex-wrap items-center justify-between gap-3">
                   <div><p className="font-semibold">Payment needed</p><p className="text-sm text-muted">{needsPayment.length} accepted booking{needsPayment.length > 1 ? "s are" : " is"} waiting for payment.</p></div>
                   <ButtonLink href={`/owner/bookings/${needsPayment[0]._id}`} variant="accent">Pay now</ButtonLink>
                 </CardBody></Card>
@@ -93,19 +96,33 @@ export function OwnerPayments() {
 
 const Stars = ({ n }: { n: number }) => <span className="text-accent-500" aria-label={`${n} stars`}>{"★".repeat(n)}<span className="text-border-strong">{"★".repeat(5 - n)}</span></span>;
 
-export function OwnerReviews() {
+function ReplyBox({ review }: { review: Review }) {
+  const [text, setText] = useState("");
+  const send = useAction(() => api(`/reviews/${review._id}/reply`, { method: "POST", body: { text } }), { success: "Reply posted", invalidate: [["reviews", "mine"]] });
+  if (review.reply?.text) return <p className="mt-2 rounded-md bg-surface-muted px-3 py-2 text-sm"><span className="font-medium">Your reply: </span>{review.reply.text}</p>;
+  return (
+    <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (text.trim().length >= 2) send.mutate(); }}>
+      <Textarea aria-label="Reply to this review" rows={1} className="min-h-10 flex-1" placeholder="Write a public reply" value={text} maxLength={500} onChange={(e) => setText(e.target.value)} />
+      <Button type="submit" size="sm" variant="secondary" loading={send.isPending}>Reply</Button>
+    </form>
+  );
+}
+
+/** Reviews I received (with reply and report) and wrote. showPending lists completed stays still waiting for my review. */
+export function OwnerReviews({ showPending = true }: { showPending?: boolean }) {
   const q = useGet<{ received: Review[]; given: Review[] }>("/bookings/reviews/mine", ["reviews", "mine"]);
   const bookings = useGet<Booking[]>("/bookings/mine?as=owner", ["bookings", "owner"]);
   return (
     <Query q={q}>
       {({ received, given }) => {
         const reviewed = new Set(given.map((r) => r.bookingId));
-        const pending = (bookings.data ?? []).filter((b) => b.status === "COMPLETED" && !reviewed.has(b._id));
+        const pending = !showPending ? [] : (bookings.data ?? []).filter((b) => b.status === "COMPLETED" && !reviewed.has(b._id));
         const list = (items: Review[], who: "from" | "to") => items.length ? (
           <ul className="space-y-3">{items.map((r) => (
             <li key={r._id}><Card><CardBody>
               <div className="flex justify-between gap-2"><p className="text-sm font-medium">{nameOf(who === "from" ? r.fromUserId : r.toUserId)}</p><p className="text-xs text-muted">{formatDate(r.createdAt)}</p></div>
               <Stars n={r.rating} />{r.comment && <p className="mt-1 text-sm">{r.comment}</p>}
+              {who === "from" ? <><ReplyBox review={r} /><div className="mt-2 text-right"><ReportButton targetType="review" targetId={r._id} label="Report this review" /></div></> : r.reply?.text && <p className="mt-2 rounded-md bg-surface-muted px-3 py-2 text-sm"><span className="font-medium">Reply: </span>{r.reply.text}</p>}
             </CardBody></Card></li>
           ))}</ul>
         ) : <EmptyState icon="⭐" title="Nothing here yet" />;

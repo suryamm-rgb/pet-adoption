@@ -39,7 +39,7 @@ export function NotificationBell() {
     <div className="relative" ref={ref}>
       <button type="button" onClick={() => setOpen((v) => !v)} aria-label={`Notifications${data?.unread ? `, ${data.unread} unread` : ""}`} aria-expanded={open} className="relative inline-flex size-10 items-center justify-center rounded-md hover:bg-surface-muted">
         <span aria-hidden>🔔</span>
-        {!!data?.unread && <span className="absolute right-1.5 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-accent-500 px-1 text-[10px] font-semibold leading-4 text-white">{data.unread > 9 ? "9+" : data.unread}</span>}
+        {!!data?.unread && <span className="absolute right-1.5 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-danger-600 px-1 text-[10px] font-semibold leading-4 text-white">{data.unread > 9 ? "9+" : data.unread}</span>}
       </button>
       {open && (
         <div className="fixed inset-x-3 top-16 z-40 max-h-[70vh] overflow-auto rounded-xl border border-border bg-surface shadow-pop sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-96">

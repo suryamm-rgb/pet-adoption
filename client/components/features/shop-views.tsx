@@ -16,8 +16,9 @@ import { api, errorText, fileUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import { formatPaise } from "@/lib/format";
-import { useGet } from "@/lib/hooks";
+import { useAction, useGet } from "@/lib/hooks";
 import { payWithRazorpay } from "@/lib/razorpay";
+import { OrderTracker } from "./order-tracking";
 import type { Order, Product } from "@/lib/types";
 
 const catIcon: Record<string, string> = { Food: "🍖", Toys: "🧸", Accessories: "🦮" };
@@ -114,6 +115,7 @@ export function CartView() {
 
 export function MyOrders() {
   const q = useGet<Order[]>("/orders/mine", ["orders", "mine"]);
+  const cancel = useAction((id: string) => api(`/orders/${id}/cancel`, { method: "PATCH", body: { reason: "Cancelled by buyer" } }), { success: "Order cancelled", invalidate: [["orders"], ["products"]] });
   return (
     <Query q={q}>
       {(list) => list.length ? (
@@ -124,8 +126,15 @@ export function MyOrders() {
                 <p className="text-sm text-muted">Order #{o._id.slice(-6)} · {new Date(o.createdAt).toLocaleDateString("en-IN")}</p>
                 <Badge tone={o.status === "DELIVERED" ? "success" : o.status === "CANCELLED" ? "danger" : "info"}>{o.status.replace("_", " ")}</Badge>
               </div>
-              <ul className="mt-3 text-sm">{o.items.map((i) => <li key={i.productId} className="flex justify-between"><span>{i.qty} × {i.name}</span><span>{formatPaise(i.qty * i.price)}</span></li>)}</ul>
-              <p className="mt-3 border-t border-border pt-3 text-right font-semibold">{formatPaise(o.total)}</p>
+              <OrderTracker order={o} />
+              <ul className="mt-4 text-sm">{o.items.map((i) => <li key={i.productId} className="flex justify-between"><span>{i.qty} × {i.name}</span><span>{formatPaise(i.qty * i.price)}</span></li>)}</ul>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                <p className="text-xs text-muted">{o.status === "CANCELLED" ? (o.refundAmount ? `Cancelled. ${formatPaise(o.refundAmount)} refunded to your original payment method.` : "Cancelled") : `Delivering to ${o.address}`}</p>
+                <div className="flex items-center gap-3">
+                  {["PENDING_PAYMENT", "PLACED"].includes(o.status) && <Button size="sm" variant="ghost" loading={cancel.isPending && cancel.variables === o._id} onClick={() => { if (confirm(o.status === "PLACED" ? "Cancel this order? You will be refunded in full." : "Cancel this order?")) cancel.mutate(o._id); }}>Cancel order</Button>}
+                  <p className="font-semibold">{formatPaise(o.total)}</p>
+                </div>
+              </div>
             </CardBody></Card></li>
           ))}
         </ul>
